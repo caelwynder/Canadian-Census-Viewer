@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Geomatics Outreach</title>
+        <link href="https://fonts.googleapis.com/css?family=Tajawal:400,600,800" rel="stylesheet" data-n-head="true">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                -webkit-box-sizing: border-box;
+                box-sizing: border-box;
+                z-index: 2;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none
+            }
+
+            body {
+                font-family: Tajawal,Helvetica,Arial,sans-serif;
+                letter-spacing: .05em;
+                line-height: 1.1em
+            }
+
+            .link {
+                font-size: .85em
+            }
+
+            .link:hover {
+                text-decoration: underline
+            }
+        </style>
+
+        <style >
+            .info-container {
+                color: #fff;              
+                position: fixed;
+                top: 0;
+                margin: 10px;
+                padding: 10px;
+                background-color: #111;
+                font-size: 12.8px;
+                font-size: .8rem ;
+                pointer-events: all;
+            }
+
+            .info-body {
+                padding: 10px;
+                padding-top: 20px
+            }
+
+            @media (max-width: 500px) {
+                .info-container {
+                    min-width:250px;
+                    margin: 10px;
+                    padding: 10px
+                }
+
+                .info-body {
+                    display: none
+                }
+            }
+
+            .info-body>div {
+                margin-top: 10px
+            }
+
+            .info-links a:hover {
+                text-decoration: underline
+            }
+
+            .info-label {
+                display: inline-block;
+                margin-right: 15px;
+                vertical-align: top;
+                text-align: right;
+                text-transform: uppercase;
+                width: 45px;
+                font-size: 9.6px;
+                font-size: .6rem
+            }
+
+            .info-text {
+                display: inline-block;
+                width: 200px
+            }
+
+            #canada-map {
+                height: 100vh;
+                width: 100%;
+                z-index: 1;
+            }
+
+            .canada-info {
+                z-index: 2;
+                position: fixed;
+                top: 25%;
+                left: 0;
+                margin: 10px;
+                padding: 6px 8px;
+                height: 23%;
+                width: 300px;
+                font-family: Tajawal,Helvetica,Arial,sans-serif;
+                color: #fff;
+                background: #111;
+            }
+
+            .canada-info h4 {
+                margin: 0 0 5px;
+                color: #ffffff;
+            }
+
+            .ontario-legend {
+                position: fixed;
+                top: 37%;
+                left: 0;
+                margin: 10px;
+                line-height: 18px;
+                color: #ffffff;
+            }
+
+            .ontario-legend i {
+                width: 18px;
+                height: 18px;
+                float: left;
+                margin-right: 8px;
+                opacity: 0.7;
+            }
+
+            .box {
+                position: fixed;
+                top: 25%;
+                left: 0;
+                margin: 10px;
+                padding: 6px 8px;
+                z-index: 0;
+                height: 30%;
+                width: 300px;
+                background-color: #111;
+            }
+
+        </style>
+
+    </head>
+    <body>
+        <div>
+            <section class="info-container" >
+                <div  class="info-links">
+                    <a  href="../main.html">&lt; home</a>
+                    <a  href="https://github.com/caelwynder/Ontario-District-Viewer" style="float:right">github ></a>
+                </div>
+                <div  class="info-body">
+                    <div >
+                        <p class="info-label" >Map
+                        <h2 class="info-text" >Canadian Census Districts</h2>
+                    </div>
+                    <div >
+                        <p class="info-label" >Date
+                        <p class="info-text" >2024-11-06
+                    </div>
+                    <div >
+                        <p class="info-label" >Desc
+                        <p class="info-text" >Population data of census districts across Canada
+                    </div>
+                </div>
+            </section>
+            </div>
+        </div>
+    </body>
+  
+    <div id="canada-map"></div>
+
+    <div class="box"></div>
+</body>
+</html>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="../data/wards.js"></script>
+<script src="canadadata.js"></script>
+<script>
+    var map = L.map('canada-map').setView([60.2538, -95.3232], 4);
+
+// Osm kayer
+var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+})
+//osm.addTo(map);
+
+// Marker
+var marker = L.marker([42.983612, -81.249725])
+//marker.addTo(map)
+//var popup = marker.bindPopup('Test<br> Test line 2.')
+//popup.addTo(map);
+
+// TileLayers 
+
+// Dark Mode
+var Stadia_AlidadeSmoothDark = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
+	minZoom: 0,
+	maxZoom: 20,
+	attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+	ext: 'png'
+});
+Stadia_AlidadeSmoothDark.addTo(map);
+
+// Google Streets
+googleStreets = L.tileLayer('http://{s}.google.com/vt?lyrs=m&x={x}&y={y}&z={z}',{
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3']
+});
+
+// Google Satalite
+googleSat = L.tileLayer('http://{s}.google.com/vt?lyrs=s&x={x}&y={y}&z={z}',{
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3']
+});
+
+// geoJSON Variables
+//var londonBorders = L.geoJSON(londonJSON).addTo(map);
+var canadaBorders = L.geoJSON(canadaJSON).addTo(map);
+
+// Tilelayer Control
+var baseLayers = {
+    "OpenStreetMap": osm,
+    "Dark Mode": Stadia_AlidadeSmoothDark,
+    "Google Streets": googleStreets,
+    "Satalite": googleSat
+};
+
+var overlays = {
+    "Marker": marker,
+    "Canadian Census Divisions": L.geoJSON(canadaJSON).addTo(map)
+};
+
+L.control.layers(baseLayers, overlays).addTo(map);
+
+L.Control.geocoder().addTo(map);
+
+//L.geoJson(canadaJSON).addTo(map);
+
+function getColor(d) {
+    return d > 1500000  ? '#800026' :
+           d > 1000000  ? '#BD0026' :
+           d > 500000  ? '#E31A1C' :
+           d > 250000   ? '#FC4E2A' :
+           d > 100000   ? '#FD8D3C' :
+           d > 50000   ? '#FEB24C' :
+           d > 10000   ? '#FED976' :
+                         '#FFEDA0';
+} 
+
+function style(feature) {
+    return {
+        fillColor: getColor(feature.properties.population),
+        weight: 0.5,
+        opacity: 1,
+        color: 'white',
+        dashArray: '3',
+        fillOpacity: 0.5
+    };
+}
+
+L.geoJson(canadaJSON, {style: style}).addTo(map);
+
+function highlightFeature(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        weight: 3,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.7
+    });
+
+    layer.bringToFront();
+
+    info.update(layer.feature.properties);
+}
+
+function resetHighlight(e) {
+    geojson.resetStyle(e.target);
+    info.update();
+}
+
+var geojson;
+geojson = L.geoJson(canadaJSON);
+
+function zoomToFeature(e) {
+    map.fitBounds(e.target.getBounds());
+}
+
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: zoomToFeature
+    });
+}
+
+geojson = L.geoJson(canadaJSON, {
+    style: style,
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'canada-info'); 
+    this.update();
+    return this._div;
+};
+
+
+info.update = function (props) {
+    this._div.innerHTML = '<h4>Canadian Census District Population</h4>' +  (props ?
+        '<b>' + "District Name: "+ props.CDNAME + '</b><br />' + "Population: " + props.population 
+        : 'Hover over a district');
+};
+
+info.addTo(map);
+
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'canada-info ontario-legend'),
+        grades = [0, 10000, 50000, 100000, 250000, 500000, 1000000, 1500000],
+        labels = [];
+
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+
+legend.addTo(map);
+
+</script>
+
+

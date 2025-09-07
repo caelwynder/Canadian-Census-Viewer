@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>    	
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="https://fonts.googleapis.com/css?family=Tajawal:400,600,800" rel="stylesheet" data-n-head="true">
+    <title>Canadian Census Viewer</title>
+    <style>
+        body {
+            font-family: Tajawal,Helvetica,Arial,sans-serif;
+        }
+        .title {
+            text-align: center;
+            position: absolute;
+            top: 10px; left: 37.5%;
+            color: #ffffff;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none
+        }
+
+        .paragraph {
+            text-align: center;
+            position: absolute;
+            text-transform: uppercase;
+            font-size: 9.6px;
+            font-size: .6rem;
+            top: 75px; left: 41%;
+            color: #ffffff;
+        }
+        
+        .image-container {
+            display: table;  
+            height: 100vh; /* Full viewport height */  
+            width: 100%; /* Full width */ 
+            color: #ffffff;
+        }
+
+        .image-link {
+            display: table-cell;  
+            vertical-align: middle;  
+            text-align: center; /* Optional for centering horizontally */ 
+        }
+
+        .responsive-image {
+            width: auto; 
+            height: 375px; 
+            border: 5px solid #ffffff; 
+            border-radius: 5px; 
+            background-color: lightblue; 
+            transition: transform 0.3s; 
+        }
+
+        .image-link:hover .responsive-image {
+            transform: scale(1.05); 
+        }
+
+    </style>
+
+
+  </head>
+
+  <body style="background: #111; background-image: url(background4.webp);">
+    <main>
+        <section class="text">
+            <div>
+                <h1 class="title">Welcome The Canadian Census Viewer</h1>
+                <p class="paragraph">You can view the census district or sub-districts maps for the <br> Federal, Provincial and Municipal level of Canada</p> 
+            </div> 
+            <section class="links">
+                <div class="image-container">
+                    <a href="ontario-map/ontario-map.html" class="image-link">
+                        <img src="ontario-map/ontario-image.png" alt="Provincial" class="responsive-image">
+                        <p>Provincial Census District Population Choropleth Map</p>
+                    </a>
+                    <a href="canada-map/canada-map.html" class="image-link">
+                        <img src="canada-map/canada-image.png" alt="Federal" class="responsive-image">
+                        <p>Federal Census District Population Choropleth Map</p>
+                    </a>
+                </div>  
+            </section>
+        </section>
+    </main>
+</main>
+        <footer style="position:fixed;bottom:10px;left:0;width:100%;text-align:center;color:#aaa;font-size:0.9em;">
+            <p>Tip: For best results, open <b>main.html</b> in your browser. All links and images use relative paths, so you can download and use this project on your own computer without a server.</p>
+        </footer>
+    </body>
+</html>
