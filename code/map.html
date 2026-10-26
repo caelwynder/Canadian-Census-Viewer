@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Canadian Census Viewer</title>
+    <link href="https://fonts.googleapis.com/css?family=Tajawal:400,600,800" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <style>
+        :root {
+            --bg: #0e1116;
+            --panel: #161a22;
+            --line: #2a2f3a;
+            --text: #e8eaee;
+            --muted: #9aa1ad;
+            --accent: #fde725;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Tajawal, Helvetica, Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.35;
+        }
+
+        a { color: inherit; }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 320px;
+            flex-shrink: 0;
+            padding: 20px;
+            overflow-y: auto;
+            background: var(--panel);
+            border-right: 1px solid var(--line);
+        }
+
+        .top-links { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+        .top-links a { text-decoration: none; }
+        .top-links a:hover { text-decoration: underline; }
+
+        h1 { font-size: 22px; font-weight: 800; line-height: 1.15; }
+
+        .region-switch { display: flex; gap: 6px; margin-top: 10px; }
+        .region-switch a {
+            flex: 1;
+            padding: 6px 0;
+            text-align: center;
+            text-decoration: none;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            color: var(--muted);
+        }
+        .region-switch a[aria-current="page"] { border-color: var(--accent); color: var(--text); }
+
+        label, .panel-heading {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            font: inherit;
+            color: var(--text);
+            background: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+        }
+
+        .legend-row { display: flex; align-items: center; gap: 10px; margin: 4px 0; font-size: 14px; }
+        .legend-swatch { width: 18px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+        .detail-name { font-size: 20px; font-weight: 800; }
+        .muted { color: var(--muted); }
+        .error { color: #ff8a80; }
+
+        .detail-list { margin-top: 12px; }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .detail-item dt { color: var(--muted); }
+        .detail-item dd { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .detail-item.active dt, .detail-item.active dd { color: var(--accent); }
+
+        .source { margin-top: auto; font-size: 12px; color: var(--muted); }
+
+        #map { flex: 1; background: var(--bg); }
+
+        @media (max-width: 700px) {
+            body { flex-direction: column-reverse; }
+            .panel { width: 100%; height: 45vh; border-right: 0; border-top: 1px solid var(--line); }
+        }
+    </style>
+</head>
+<body>
+    <aside class="panel">
+        <nav class="top-links">
+            <a href="main.html">&lt; home</a>
+            <a href="https://github.com/caelwynder/Canadian-Census-Viewer">github &gt;</a>
+        </nav>
+        <div>
+            <h1 id="region-title">Census divisions</h1>
+            <nav class="region-switch" aria-label="Region">
+                <a data-region="ontario" href="?region=ontario">Ontario</a>
+                <a data-region="canada" href="?region=canada">Canada</a>
+            </nav>
+        </div>
+        <div>
+            <label for="metric">Metric</label>
+            <select id="metric"></select>
+        </div>
+        <section id="legend" aria-live="polite"></section>
+        <section id="detail" aria-live="polite"></section>
+        <p class="source">Source: Statistics Canada, 2016 Census. Open Government Licence – Canada.</p>
+    </aside>
+    <main id="map" aria-label="Map of census divisions"></main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="data/census-boundaries.js"></script>
+    <script src="data/census-age-sex-2016.js"></script>
+    <script src="js/format.js"></script>
+    <script src="js/breaks.js"></script>
+    <script src="js/metrics.js"></script>
+    <script src="js/regions.js"></script>
+    <script src="js/map.js"></script>
+    <script>CensusViewer.map.start();</script>
+</body>
+</html>
