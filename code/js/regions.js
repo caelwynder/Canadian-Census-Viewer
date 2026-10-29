@@ -1,7 +1,7 @@
 (function (CV) {
   var REGIONS = {
-    canada: { id: "canada", title: "Canada", pruids: null },
-    ontario: { id: "ontario", title: "Ontario", pruids: ["35"] },
+    canada: { id: "canada", title: "Canada", people: "Canadians", pruids: null },
+    ontario: { id: "ontario", title: "Ontario", people: "Ontarians", pruids: ["35"] },
   };
 
   function fromSearch(search) {

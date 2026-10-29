@@ -1,7 +1,15 @@
 (function (CV) {
-  var BASE_STYLE = { weight: 0.6, color: "#0e1116", opacity: 0.9, fillOpacity: 0.8 };
-  var HOVER_STYLE = { weight: 2.5, color: "#ffffff" };
+  var MAP_STYLE = { weight: 0.6, color: "#0b0d10", opacity: 0.9, fillOpacity: 0.85 };
+  var DOT_STYLE = { weight: 0.6, color: "#2a2f3a", opacity: 1, fillColor: "#14171d", fillOpacity: 1 };
+  var HOVER_STYLE = { weight: 2, color: "#ffffff" };
+  var PINNED_STYLE = { weight: 2.5, color: "#f97a3c" };
+  var PER_DOT = 1000;
+  var DRAWER_WIDTH = 440;
+  var CONTROL_WIDTH = 400;
+  var NARROW = 700;
+  var VIEWS = ["map", "dots"];
   var ATTRIBUTION = "Boundaries &copy; Statistics Canada";
+  var COUNT = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 0 });
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -10,13 +18,20 @@
     return node;
   }
 
-  function formatMetric(metric, row, year) {
-    if (!row || metric.years.indexOf(year) === -1) return "n/a";
-    return CV.format.value(metric.value(row, year), metric.unit);
+  function toggleButton(label, pressed, onClick, className) {
+    var button = el("button", className, label);
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(pressed));
+    button.addEventListener("click", onClick);
+    return button;
   }
 
-  function legendRow(color, label) {
-    var row = el("div", "legend-row");
+  function millions(n) {
+    return n >= 1e6 ? (n / 1e6).toFixed(1) + " million" : COUNT.format(n);
+  }
+
+  function legendRow(color, label, className) {
+    var row = el("div", className || "legend-row");
     var swatch = el("span", "legend-swatch");
     swatch.style.background = color;
     row.append(swatch, el("span", null, label));
@@ -26,36 +41,11 @@
   function renderLegend(container, metric, year, scale) {
     var labels = CV.breaks.labels(scale.thresholds, function (n) { return CV.format.value(n, metric.unit); });
     var rows = scale.colors.map(function (color, i) { return legendRow(color, labels[i]); });
-    container.replaceChildren(el("h2", "panel-heading", metric.label + ", " + year), ...rows, legendRow(CV.breaks.NO_DATA_COLOR, "No data"));
+    container.replaceChildren(el("h2", "eyebrow", "Legend · " + year), ...rows, legendRow(CV.breaks.NO_DATA_COLOR, "No data"));
   }
 
-  function renderTrend(metric, row, year) {
-    var trend = el("div", "trend");
-    metric.years.forEach(function (y) {
-      var cell = el("div", y === year ? "trend-cell active" : "trend-cell");
-      cell.append(el("span", "trend-year", String(y)), el("span", "trend-value", formatMetric(metric, row, y)));
-      trend.append(cell);
-    });
-    return trend;
-  }
-
-  function renderDetail(container, feature, row, state) {
-    if (!feature) {
-      container.replaceChildren(el("p", "muted", "Hover over a census division to see its figures. Click one to zoom in."));
-      return;
-    }
-    var list = el("dl", "detail-list");
-    CV.metrics.list.forEach(function (m) {
-      var item = el("div", m.id === state.metric.id ? "detail-item active" : "detail-item");
-      item.append(el("dt", null, m.label), el("dd", null, formatMetric(m, row, state.year)));
-      list.append(item);
-    });
-    container.replaceChildren(
-      el("h2", "detail-name", feature.properties.name),
-      el("p", "muted", feature.properties.province + " · " + state.year),
-      renderTrend(state.metric, row, state.year),
-      list
-    );
+  function renderDotLegend(container, scheme) {
+    container.replaceChildren(...scheme.categories.map(function (c) { return legendRow(c.color, c.label, "legend-row dot-row"); }));
   }
 
   function renderMetricPicker(select, activeMetric, onChange) {
@@ -74,40 +64,49 @@
     select.addEventListener("change", function () { onChange(CV.metrics.byId(select.value)); });
   }
 
-  function renderTimeline(container, state, onChange) {
-    var buttons = CV.metrics.YEARS.map(function (year) {
-      var button = el("button", "year-button", String(year));
-      button.type = "button";
-      button.disabled = state.metric.years.indexOf(year) === -1;
-      button.setAttribute("aria-pressed", String(year === state.year));
-      button.addEventListener("click", function () { onChange(year); });
+  function renderChips(container, active, onChange) {
+    container.replaceChildren(...CV.dots.SCHEMES.map(function (s) {
+      return toggleButton(s.label, s.id === active.id, function () { onChange(s); }, "chip");
+    }));
+  }
+
+  function renderViewToggle(container, view, onChange) {
+    container.replaceChildren(
+      toggleButton("Choropleth", view === "map", function () { onChange("map"); }, "segment"),
+      toggleButton("Dot density", view === "dots", function () { onChange("dots"); }, "segment")
+    );
+  }
+
+  function renderTimeline(container, years, year, onChange) {
+    container.replaceChildren(...CV.metrics.YEARS.map(function (y) {
+      var button = toggleButton(String(y), y === year, function () { onChange(y); }, "year-button");
+      button.disabled = years.indexOf(y) === -1;
       return button;
-    });
-    container.replaceChildren(...buttons);
-  }
-
-  function queryString(region, state) {
-    return "?region=" + region.id + "&metric=" + state.metric.id + "&year=" + state.year;
-  }
-
-  function renderRegionLinks(region, state) {
-    document.querySelectorAll("a[data-region]").forEach(function (a) {
-      a.href = queryString({ id: a.dataset.region }, state);
-      if (a.dataset.region === region.id) a.setAttribute("aria-current", "page");
-      else a.removeAttribute("aria-current");
-    });
+    }));
   }
 
   function showError(message) {
-    document.getElementById("detail").replaceChildren(el("p", "error", message));
+    document.getElementById("headline").textContent = "Something went wrong";
+    document.getElementById("intro").replaceChildren(el("span", "error", message));
   }
 
   function joinRows() {
     var rows = {};
     Object.keys(CENSUS.ageSex2016).forEach(function (id) {
-      rows[id] = Object.assign({}, CENSUS.ageSex2016[id], CENSUS.profile2016[id]);
+      rows[id] = Object.assign({ cduid: id }, CENSUS.ageSex2016[id], CENSUS.profile2016[id]);
     });
     return rows;
+  }
+
+  function readState(params) {
+    var view = params.get("view");
+    return {
+      view: VIEWS.indexOf(view) === -1 ? "map" : view,
+      metric: CV.metrics.byId(params.get("metric")),
+      scheme: CV.dots.schemeById(params.get("dots")),
+      year: Number(params.get("year")) || CV.metrics.YEARS[CV.metrics.YEARS.length - 1],
+      pinned: params.get("cd"),
+    };
   }
 
   function start() {
@@ -115,68 +114,180 @@
       showError("Census data did not load. Run npm run data:build and reload.");
       return;
     }
-    var params = new URLSearchParams(location.search);
     var region = CV.regions.fromSearch(location.search);
     var rows = joinRows();
     var features = CV.regions.select(CENSUS.boundaries, region);
-    var regionRows = features.features.map(function (f) { return rows[f.properties.cduid] || {}; });
-    var detail = document.getElementById("detail");
-    var state = { metric: null, year: null, scale: null, pinned: null };
+    var regionRows = features.features.map(function (f) { return rows[f.properties.cduid]; }).filter(Boolean);
+    var regionTotals = CV.profile.aggregate(regionRows);
+    var state = readState(new URLSearchParams(location.search));
+    var drawer = document.getElementById("drawer");
+    var dotCache = {};
+    var scale = metricScale();
+
+    function metricScale() {
+      return CV.breaks.scale(state.metric, CV.metrics.allValues(state.metric, regionRows), CV.metrics.SEQUENTIAL);
+    }
+
+    function activeYears() {
+      return state.view === "dots" ? state.scheme.years : state.metric.years;
+    }
+
+    function year() {
+      var years = activeYears();
+      return years.indexOf(state.year) !== -1 ? state.year : years[years.length - 1];
+    }
 
     function rowFor(feature) {
       return rows[feature.properties.cduid];
     }
 
-    function setMetric(metric, year) {
-      state.metric = metric;
-      state.year = CV.metrics.yearFor(metric, year);
-      state.scale = CV.breaks.scale(metric, CV.metrics.allValues(metric, regionRows), CV.metrics.SEQUENTIAL);
-    }
-
     function style(feature) {
+      var pinned = feature.properties.cduid === state.pinned ? PINNED_STYLE : {};
+      if (state.view === "dots") return Object.assign({}, DOT_STYLE, pinned);
       var row = rowFor(feature);
-      return Object.assign({}, BASE_STYLE, { fillColor: state.scale.colorFor(row ? state.metric.value(row, state.year) : null) });
+      return Object.assign({}, MAP_STYLE, { fillColor: scale.colorFor(row ? state.metric.value(row, year()) : null) }, pinned);
     }
 
-    function showFeature(feature) {
-      renderDetail(detail, feature, feature && rowFor(feature), state);
+    function tooltip(layer) {
+      var row = rowFor(layer.feature);
+      var value = state.view === "dots"
+        ? CV.format.value(row && row["total_" + year()], "count") + " people"
+        : CV.format.value(row ? state.metric.value(row, year()) : null, state.metric.unit);
+      var tip = el("div");
+      tip.append(el("strong", null, layer.feature.properties.name), el("span", null, value));
+      return tip;
     }
 
-    setMetric(CV.metrics.byId(params.get("metric")), Number(params.get("year")));
-    document.title = region.title + " · Canadian Census Viewer";
-    document.getElementById("region-title").textContent = region.title + " census divisions";
-
-    var map = L.map("map", { zoomSnap: 0.25 });
+    var map = L.map("map", { zoomSnap: 0.25, zoomControl: false });
+    L.control.zoom({ position: "topright" }).addTo(map);
     map.attributionControl.addAttribution(ATTRIBUTION);
+    map.createPane("dots").style.zIndex = 450;
 
     var divisions = L.geoJSON(features, {
-      style: style,
+      style: function (f) { return style(f); },
       onEachFeature: function (feature, layer) {
+        layer.bindTooltip(tooltip, { sticky: true, className: "map-tip", direction: "top", offset: [0, -10] });
         layer.on({
-          mouseover: function () { layer.setStyle(HOVER_STYLE).bringToFront(); showFeature(feature); },
-          mouseout: function () { divisions.resetStyle(layer); showFeature(state.pinned); },
-          click: function () { state.pinned = feature; showFeature(feature); map.fitBounds(layer.getBounds(), { maxZoom: 9 }); },
+          mouseover: function () { layer.setStyle(HOVER_STYLE).bringToFront(); },
+          mouseout: function () { divisions.resetStyle(layer); },
+          click: function () { select(feature.properties.cduid, true); },
         });
       },
     }).addTo(map);
-    map.fitBounds(divisions.getBounds());
+    var dotLayer = CV.dotLayer([], [], { pane: "dots" });
+    map.fitBounds(divisions.getBounds(), { paddingTopLeft: [window.innerWidth > NARROW ? CONTROL_WIDTH : 0, 0] });
 
-    function update(metric, year) {
-      setMetric(metric, year);
-      divisions.setStyle(style);
+    function layerFor(cduid) {
+      return divisions.getLayers().find(function (l) { return l.feature.properties.cduid === cduid; });
+    }
+
+    function dotsFor(scheme, y) {
+      var key = scheme.id + y;
+      if (!dotCache[key]) dotCache[key] = CV.dots.generate(features.features, rows, scheme, y, PER_DOT);
+      return dotCache[key];
+    }
+
+    function select(cduid, zoom) {
+      var layer = layerFor(cduid);
+      if (!layer) return;
+      state.pinned = cduid;
+      var padding = window.innerWidth > NARROW ? DRAWER_WIDTH : 0;
+      if (zoom) map.fitBounds(layer.getBounds(), { maxZoom: 9, paddingBottomRight: [padding, 0] });
       render();
     }
 
-    function render() {
-      renderLegend(document.getElementById("legend"), state.metric, state.year, state.scale);
-      renderTimeline(document.getElementById("timeline"), state, function (year) { update(state.metric, year); });
-      renderRegionLinks(region, state);
-      showFeature(state.pinned);
-      history.replaceState(null, "", queryString(region, state));
+    function closeDrawer() {
+      state.pinned = null;
+      render();
     }
 
-    renderMetricPicker(document.getElementById("metric"), state.metric, function (metric) { update(metric, state.year); });
+    function renderDrawer() {
+      var layer = state.pinned && layerFor(state.pinned);
+      drawer.hidden = !layer;
+      if (!layer) return;
+      CV.panel.render(drawer, {
+        row: rowFor(layer.feature),
+        name: layer.feature.properties.name,
+        rows: regionRows,
+        region: regionTotals,
+        regionName: region.title,
+        year: year(),
+        metric: state.metric,
+        onSelect: function (cduid) { select(cduid, true); },
+      }, closeDrawer);
+    }
+
+    function renderHeadline() {
+      var headline = document.getElementById("headline");
+      var intro = document.getElementById("intro");
+      if (state.view === "map") {
+        headline.textContent = state.metric.label;
+        intro.textContent = region.title + " census divisions, " + year() + ". Hover for figures; click a division for its profile.";
+        return;
+      }
+      var scheme = state.scheme;
+      var total = regionRows.reduce(function (sum, r) { return sum + (scheme.total(r, year()) || 0); }, 0);
+      var who = scheme.unit === "people" ? region.people : region.title + " households";
+      headline.textContent = millions(total) + " " + who + ", by " + scheme.label.toLowerCase();
+      intro.textContent = "One dot = " + COUNT.format(PER_DOT) + " " + scheme.unit + ", placed at random inside its census division and coloured by " +
+        scheme.label.toLowerCase() + ". " + COUNT.format(dotsFor(scheme, year()).length) + " dots in this view. Dots show how many, not exactly where within a division.";
+    }
+
+    function renderControls() {
+      var isDots = state.view === "dots";
+      document.getElementById("map-controls").hidden = isDots;
+      document.getElementById("dot-controls").hidden = !isDots;
+      renderViewToggle(document.getElementById("view-toggle"), state.view, function (view) { state.view = view; render(); });
+      renderTimeline(document.getElementById("timeline"), activeYears(), year(), function (y) { state.year = y; render(); });
+      if (isDots) {
+        renderDotLegend(document.getElementById("dot-legend"), state.scheme);
+        renderChips(document.getElementById("chips"), state.scheme, function (s) { state.scheme = s; render(); });
+        return;
+      }
+      renderLegend(document.getElementById("legend"), state.metric, year(), scale);
+    }
+
+    function queryString(regionId) {
+      var query = "?region=" + regionId + "&view=" + state.view + "&metric=" + state.metric.id + "&dots=" + state.scheme.id + "&year=" + year();
+      return regionId === region.id && state.pinned ? query + "&cd=" + state.pinned : query;
+    }
+
+    function renderRegionLinks() {
+      document.querySelectorAll("a[data-region]").forEach(function (a) {
+        a.href = queryString(a.dataset.region);
+        if (a.dataset.region === region.id) a.setAttribute("aria-current", "page");
+        else a.removeAttribute("aria-current");
+      });
+    }
+
+    function renderMap() {
+      if (state.view === "dots") {
+        dotLayer.setData(dotsFor(state.scheme, year()), state.scheme.categories.map(function (c) { return c.color; }));
+        if (!map.hasLayer(dotLayer)) dotLayer.addTo(map);
+      } else {
+        scale = metricScale();
+        if (map.hasLayer(dotLayer)) map.removeLayer(dotLayer);
+      }
+      divisions.setStyle(style);
+      var pinned = state.pinned && layerFor(state.pinned);
+      if (pinned) pinned.bringToFront();
+    }
+
+    function render() {
+      renderMap();
+      renderHeadline();
+      renderControls();
+      renderDrawer();
+      renderRegionLinks();
+      document.body.dataset.view = state.view;
+      history.replaceState(null, "", queryString(region.id));
+    }
+
+    document.title = region.title + " · Canadian Census Viewer";
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && state.pinned) closeDrawer(); });
+    renderMetricPicker(document.getElementById("metric"), state.metric, function (metric) { state.metric = metric; render(); });
     render();
+    if (state.pinned) select(state.pinned, true);
   }
 
   CV.map = { start: start };

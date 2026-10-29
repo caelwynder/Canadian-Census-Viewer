@@ -4,165 +4,336 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Canadian Census Viewer</title>
-    <link href="https://fonts.googleapis.com/css?family=Tajawal:400,600,800" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <style>
         :root {
-            --bg: #0e1116;
-            --panel: #161a22;
+            --bg: #0b0d10;
+            --card: rgba(20, 23, 29, .94);
+            --raised: #1b1f27;
             --line: #2a2f3a;
             --text: #e8eaee;
             --muted: #9aa1ad;
-            --accent: #fde725;
+            --accent: #f97a3c;
+            --up: #4ade80;
+            --down: #f87171;
+            --region: #6b7280;
+            --radius: 14px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            display: flex;
             height: 100vh;
+            overflow: hidden;
             background: var(--bg);
             color: var(--text);
-            font-family: Tajawal, Helvetica, Arial, sans-serif;
-            font-size: 15px;
-            line-height: 1.35;
+            font: 14px/1.45 Inter, system-ui, sans-serif;
         }
 
         a { color: inherit; }
+        button { font: inherit; color: inherit; cursor: pointer; }
+        .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+        .muted { color: var(--muted); }
+        .error { color: var(--down); }
+        [hidden] { display: none !important; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-        .panel {
+        #map { position: fixed; inset: 0; background: var(--bg); }
+        .leaflet-container { font: inherit; }
+
+        .card {
+            position: fixed;
+            z-index: 1000;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+        }
+
+        .control {
+            top: 24px;
+            left: 24px;
+            width: 360px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding: 22px 24px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            width: 320px;
-            flex-shrink: 0;
-            padding: 20px;
-            overflow-y: auto;
-            background: var(--panel);
-            border-right: 1px solid var(--line);
+            gap: 18px;
         }
 
-        .top-links { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
-        .top-links a { text-decoration: none; }
-        .top-links a:hover { text-decoration: underline; }
-
-        h1 { font-size: 22px; font-weight: 800; line-height: 1.15; }
-
-        .region-switch { display: flex; gap: 6px; margin-top: 10px; }
-        .region-switch a {
-            flex: 1;
-            padding: 6px 0;
-            text-align: center;
-            text-decoration: none;
-            border: 1px solid var(--line);
+        .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
+        .logo-mark {
+            display: grid;
+            place-items: center;
+            width: 24px;
+            height: 24px;
             border-radius: 6px;
-            color: var(--muted);
+            background: var(--accent);
+            color: #1a0d05;
+            font-size: 12px;
+            font-weight: 700;
         }
-        .region-switch a[aria-current="page"] { border-color: var(--accent); color: var(--text); }
 
-        label, .panel-heading {
-            display: block;
-            margin-bottom: 8px;
+        .region-switch { display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--raised); }
+        .region-switch a {
+            padding: 3px 10px;
+            border-radius: 6px;
             font-size: 12px;
             font-weight: 600;
-            letter-spacing: .06em;
+            letter-spacing: .04em;
+            text-decoration: none;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .region-switch a[aria-current="page"] { background: var(--line); color: var(--text); }
+
+        h1 {
+            font: 700 28px/1.12 "Space Grotesk", Inter, sans-serif;
+            letter-spacing: -.01em;
+        }
+        .intro { margin-top: 10px; color: var(--muted); }
+
+        .eyebrow {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .08em;
             text-transform: uppercase;
             color: var(--muted);
         }
 
+        .segments { display: flex; padding: 3px; border-radius: 10px; background: var(--raised); }
+        .segment {
+            flex: 1;
+            padding: 7px 0;
+            border: 0;
+            border-radius: 8px;
+            background: none;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .segment[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+
         select {
             width: 100%;
-            padding: 8px;
+            padding: 9px 10px;
             font: inherit;
             color: var(--text);
-            background: var(--bg);
+            background: var(--raised);
             border: 1px solid var(--line);
-            border-radius: 6px;
+            border-radius: 8px;
         }
 
-        .timeline { display: flex; gap: 6px; }
-        .year-button {
-            flex: 1;
-            padding: 6px 0;
-            font: inherit;
-            color: var(--muted);
-            background: var(--bg);
+        .legend { margin-top: 16px; }
+        .legend-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
+        .legend-swatch { width: 18px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        .dot-row .legend-swatch { width: 11px; height: 11px; border-radius: 50%; }
+
+        .chips-heading { margin-top: 16px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            padding: 5px 12px;
             border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--raised);
+            color: var(--muted);
+        }
+        .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+
+        .statusbar {
+            bottom: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 8px 14px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .timeline { display: flex; gap: 4px; }
+        .year-button {
+            padding: 3px 10px;
+            border: 1px solid transparent;
             border-radius: 6px;
-            cursor: pointer;
+            background: none;
+            color: var(--muted);
+            font-family: "JetBrains Mono", monospace;
+            font-size: 12px;
         }
         .year-button[aria-pressed="true"] { border-color: var(--accent); color: var(--text); }
-        .year-button:disabled { opacity: .35; cursor: not-allowed; }
-        .year-button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .year-button:disabled { opacity: .3; cursor: not-allowed; }
+        .statusbar .sep { width: 1px; height: 16px; background: var(--line); }
 
-        .legend-row { display: flex; align-items: center; gap: 10px; margin: 4px 0; font-size: 14px; }
-        .legend-swatch { width: 18px; height: 14px; border-radius: 3px; flex-shrink: 0; }
-
-        .detail-name { font-size: 20px; font-weight: 800; }
-        .muted { color: var(--muted); }
-        .error { color: #ff8a80; }
-
-        .trend { display: flex; gap: 6px; margin-top: 12px; }
-        .trend-cell {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 6px 8px;
-            border: 1px solid var(--line);
-            border-radius: 6px;
+        .leaflet-top.leaflet-right { top: 12px; right: 12px; }
+        .leaflet-bar { border: 1px solid var(--line) !important; border-radius: 12px !important; overflow: hidden; background: var(--card); }
+        .leaflet-bar a, .leaflet-bar a:hover {
+            width: 38px !important;
+            height: 38px !important;
+            line-height: 38px !important;
+            background: var(--card);
+            color: var(--text);
+            border-bottom-color: var(--line);
         }
-        .trend-cell.active { border-color: var(--accent); }
-        .trend-year { font-size: 12px; color: var(--muted); }
-        .trend-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .leaflet-control-attribution { background: rgba(11, 13, 16, .7) !important; color: var(--muted); }
+        .leaflet-control-attribution a { color: var(--muted); }
 
-        .detail-list { margin-top: 12px; }
-        .detail-item {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 6px 0;
+        .map-tip {
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--text);
+            box-shadow: none;
+            font: inherit;
+        }
+        .map-tip::before { display: none; }
+        .map-tip div { display: flex; flex-direction: column; }
+        .map-tip span { color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 12px; }
+
+        .drawer {
+            top: 24px;
+            right: 72px;
+            bottom: 24px;
+            width: 420px;
+            overflow-y: auto;
+            padding: 20px 22px 28px;
+        }
+        .drawer-head { display: flex; justify-content: space-between; align-items: center; }
+        .crumbs { font-size: 12px; color: var(--muted); }
+        .icon-button {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--raised);
+            font-size: 18px;
+            line-height: 1;
+        }
+        .place-name { margin-top: 6px; font: 700 34px/1.1 "Space Grotesk", Inter, sans-serif; }
+        .summary { margin: 14px 0 18px; font-size: 15px; line-height: 1.6; }
+        .summary strong { color: var(--accent); font-weight: 600; }
+
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+        .stat-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+        .stat-value { display: block; margin: 4px 0; font-size: 22px; }
+        .stat.up .stat-value { color: var(--up); }
+        .stat.down .stat-value { color: var(--down); }
+        .stat-note { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+        .badge {
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: var(--line);
+            color: var(--text);
+            font: 500 11px "JetBrains Mono", monospace;
+        }
+        .badge.high { background: rgba(249, 122, 60, .2); color: var(--accent); }
+        .badge.low { background: rgba(79, 176, 232, .18); color: #7cc4ee; }
+
+        .box { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+        .box-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: 12px; }
+        .box-head h3 { font-size: 14px; font-weight: 600; }
+        .key { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+        .key span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
+        .key-own::before { background: var(--accent); }
+        .key-region::before { background: var(--region); }
+        .box > .key { margin-top: 6px; }
+
+        .chart { width: 100%; height: auto; }
+        .chart text { fill: var(--muted); font: 10px "JetBrains Mono", monospace; }
+        .chart .baseline { stroke: var(--line); stroke-dasharray: 3 3; }
+        .chart circle.series-own { fill: var(--accent); }
+        .chart circle.series-region { fill: var(--region); }
+        .chart polyline { fill: none; stroke-width: 2; }
+        .chart polyline.series-own { stroke: var(--accent); }
+        .chart polyline.series-region { stroke: var(--region); }
+
+        .bar-row { display: grid; grid-template-columns: 48px 1fr 108px; align-items: center; gap: 10px; margin: 8px 0; font-size: 13px; }
+        .bars { display: flex; flex-direction: column; gap: 3px; }
+        .bar { height: 6px; border-radius: 3px; min-width: 2px; }
+        .bar-own { background: var(--accent); }
+        .bar-region { background: var(--region); }
+        .bar-nums { font-size: 12px; color: var(--muted); text-align: right; }
+        .bar-nums strong { color: var(--text); font-weight: 500; }
+
+        .theme { margin-top: 22px; }
+        .theme-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2px 12px;
+            padding: 8px 0;
             border-bottom: 1px solid var(--line);
         }
-        .detail-item dt { color: var(--muted); }
-        .detail-item dd { font-weight: 600; font-variant-numeric: tabular-nums; }
-        .detail-item.active dt, .detail-item.active dd { color: var(--accent); }
+        .theme-item dt { color: var(--muted); }
+        .theme-item dd { text-align: right; }
+        .theme-region { font-size: 12px; color: var(--muted); }
+        .theme-item .badge { justify-self: end; align-self: center; }
+        .theme-item.active dt, .theme-item.active dd { color: var(--accent); }
 
-        .source { margin-top: auto; font-size: 12px; color: var(--muted); }
-
-        #map { flex: 1; background: var(--bg); }
+        .similar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 0;
+            border: 0;
+            border-bottom: 1px solid var(--line);
+            background: none;
+            text-align: left;
+        }
+        .similar:hover strong { color: var(--accent); }
 
         @media (max-width: 700px) {
-            body { flex-direction: column-reverse; }
-            .panel { width: 100%; height: 45vh; border-right: 0; border-top: 1px solid var(--line); }
+            .control { top: 12px; left: 12px; right: 12px; width: auto; max-height: 46vh; padding: 16px; gap: 14px; }
+            h1 { font-size: 22px; }
+            .statusbar { left: 12px; right: 12px; bottom: 12px; flex-wrap: wrap; }
+            .statusbar .sep, .statusbar .source { display: none; }
+            .drawer { inset: 12px; width: auto; }
+            .leaflet-top.leaflet-right { top: auto; bottom: 70px; }
         }
     </style>
 </head>
 <body>
-    <aside class="panel">
-        <nav class="top-links">
-            <a href="main.html">&lt; home</a>
-            <a href="https://github.com/caelwynder/Canadian-Census-Viewer">github &gt;</a>
-        </nav>
-        <div>
-            <h1 id="region-title">Census divisions</h1>
+    <main id="map" aria-label="Map of census divisions"></main>
+
+    <aside class="card control" aria-label="Map controls">
+        <div class="brand">
+            <a class="logo" href="main.html"><span class="logo-mark" aria-hidden="true">C</span>Census Viewer</a>
             <nav class="region-switch" aria-label="Region">
                 <a data-region="ontario" href="?region=ontario">Ontario</a>
                 <a data-region="canada" href="?region=canada">Canada</a>
             </nav>
         </div>
         <div>
-            <label for="metric">Metric</label>
+            <h1 id="headline">Census divisions</h1>
+            <p class="intro" id="intro"></p>
+        </div>
+        <div class="segments" id="view-toggle" role="group" aria-label="Map view"></div>
+        <div id="map-controls">
+            <label class="eyebrow" for="metric">Metric</label>
             <select id="metric"></select>
+            <section class="legend" id="legend" aria-live="polite"></section>
         </div>
-        <div>
-            <span class="panel-heading" id="timeline-label">Census year</span>
-            <div class="timeline" id="timeline" role="group" aria-labelledby="timeline-label"></div>
+        <div id="dot-controls" hidden>
+            <section id="dot-legend" aria-live="polite"></section>
+            <h2 class="eyebrow chips-heading">Colour dots by</h2>
+            <div class="chips" id="chips" role="group" aria-label="Colour dots by"></div>
         </div>
-        <section id="legend" aria-live="polite"></section>
-        <section id="detail" aria-live="polite"></section>
-        <p class="source">Source: Statistics Canada, 2016 Census. Open Government Licence – Canada.</p>
     </aside>
-    <main id="map" aria-label="Map of census divisions"></main>
+
+    <div class="card statusbar">
+        <div class="timeline" id="timeline" role="group" aria-label="Census year"></div>
+        <span class="sep" aria-hidden="true"></span>
+        <span class="source">Cartographic boundaries · Statistics Canada · Open Government Licence</span>
+    </div>
+
+    <aside class="card drawer" id="drawer" aria-label="Division profile" aria-live="polite" hidden></aside>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="data/census-boundaries.js"></script>
@@ -172,6 +343,10 @@
     <script src="js/breaks.js"></script>
     <script src="js/metrics.js"></script>
     <script src="js/regions.js"></script>
+    <script src="js/dots.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/panel.js"></script>
+    <script src="js/dot-layer.js"></script>
     <script src="js/map.js"></script>
     <script>CensusViewer.map.start();</script>
 </body>
