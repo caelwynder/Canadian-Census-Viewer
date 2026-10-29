@@ -1,8 +1,7 @@
 (function (CV) {
-  var MAP_STYLE = { weight: 0.6, color: "#0b0d10", opacity: 0.9, fillOpacity: 0.85 };
-  var DOT_STYLE = { weight: 0.6, color: "#2a2f3a", opacity: 1, fillColor: "#14171d", fillOpacity: 1 };
-  var HOVER_STYLE = { weight: 2, color: "#ffffff" };
-  var PINNED_STYLE = { weight: 2.5, color: "#f97a3c" };
+  var ui = CV.controls;
+  var MAP_STYLE = { weight: 0.6, opacity: 0.9, fillOpacity: 0.85 };
+  var DOT_STYLE = { weight: 0.6, opacity: 1, fillOpacity: 1 };
   var PER_DOT = 1000;
   var DRAWER_WIDTH = 440;
   var CONTROL_WIDTH = 400;
@@ -11,91 +10,30 @@
   var ATTRIBUTION = "Boundaries &copy; Statistics Canada";
   var COUNT = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 0 });
 
-  function el(tag, className, text) {
-    var node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  }
-
-  function toggleButton(label, pressed, onClick, className) {
-    var button = el("button", className, label);
-    button.type = "button";
-    button.setAttribute("aria-pressed", String(pressed));
-    button.addEventListener("click", onClick);
-    return button;
-  }
-
-  function millions(n) {
-    return n >= 1e6 ? (n / 1e6).toFixed(1) + " million" : COUNT.format(n);
-  }
-
-  function legendRow(color, label, className) {
-    var row = el("div", className || "legend-row");
-    var swatch = el("span", "legend-swatch");
-    swatch.style.background = color;
-    row.append(swatch, el("span", null, label));
-    return row;
-  }
-
-  function renderLegend(container, metric, year, scale) {
-    var labels = CV.breaks.labels(scale.thresholds, function (n) { return CV.format.value(n, metric.unit); });
-    var rows = scale.colors.map(function (color, i) { return legendRow(color, labels[i]); });
-    container.replaceChildren(el("h2", "eyebrow", "Legend · " + year), ...rows, legendRow(CV.breaks.NO_DATA_COLOR, "No data"));
-  }
-
-  function renderDotLegend(container, scheme) {
-    container.replaceChildren(...scheme.categories.map(function (c) { return legendRow(c.color, c.label, "legend-row dot-row"); }));
-  }
-
-  function renderMetricPicker(select, activeMetric, onChange) {
-    var groups = CV.metrics.themes().map(function (group) {
-      var optgroup = el("optgroup");
-      optgroup.label = group.theme;
-      group.metrics.forEach(function (id) {
-        var option = el("option", null, CV.metrics.byId(id).label);
-        option.value = id;
-        option.selected = id === activeMetric.id;
-        optgroup.append(option);
-      });
-      return optgroup;
-    });
-    select.replaceChildren(...groups);
-    select.addEventListener("change", function () { onChange(CV.metrics.byId(select.value)); });
-  }
-
-  function renderChips(container, active, onChange) {
-    container.replaceChildren(...CV.dots.SCHEMES.map(function (s) {
-      return toggleButton(s.label, s.id === active.id, function () { onChange(s); }, "chip");
-    }));
-  }
-
-  function renderViewToggle(container, view, onChange) {
-    container.replaceChildren(
-      toggleButton("Choropleth", view === "map", function () { onChange("map"); }, "segment"),
-      toggleButton("Dot density", view === "dots", function () { onChange("dots"); }, "segment")
-    );
-  }
-
-  function renderTimeline(container, years, year, onChange) {
-    container.replaceChildren(...CV.metrics.YEARS.map(function (y) {
-      var button = toggleButton(String(y), y === year, function () { onChange(y); }, "year-button");
-      button.disabled = years.indexOf(y) === -1;
-      return button;
-    }));
-  }
-
   function showError(message) {
     document.getElementById("headline").textContent = "Something went wrong";
-    document.getElementById("intro").replaceChildren(el("span", "error", message));
+    document.getElementById("intro").replaceChildren(ui.el("span", "error", message));
   }
 
-  function joinRows() {
-    var rows = {};
-    Object.keys(CENSUS.ageSex2016).forEach(function (id) {
-      rows[id] = Object.assign({ cduid: id }, CENSUS.ageSex2016[id], CENSUS.profile2016[id]);
+  function themeColor(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function themeControl(onToggle) {
+    var Control = L.Control.extend({
+      onAdd: function () {
+        var bar = L.DomUtil.create("div", "leaflet-bar");
+        var button = L.DomUtil.create("a", "theme-toggle", bar);
+        button.href = "#";
+        button.setAttribute("role", "button");
+        button.setAttribute("aria-label", "Switch between dark and light theme");
+        button.textContent = "◐";
+        L.DomEvent.on(button, "click", function (e) { L.DomEvent.preventDefault(e); onToggle(); });
+        L.DomEvent.disableClickPropagation(bar);
+        return bar;
+      },
     });
-    return rows;
+    return new Control({ position: "topright" });
   }
 
   function readState(params) {
@@ -106,6 +44,7 @@
       scheme: CV.dots.schemeById(params.get("dots")),
       year: Number(params.get("year")) || CV.metrics.YEARS[CV.metrics.YEARS.length - 1],
       pinned: params.get("cd"),
+      vs: params.get("vs"),
     };
   }
 
@@ -115,7 +54,7 @@
       return;
     }
     var region = CV.regions.fromSearch(location.search);
-    var rows = joinRows();
+    var rows = CV.profile.joinRows(CENSUS.ageSex2016, CENSUS.profile2016);
     var features = CV.regions.select(CENSUS.boundaries, region);
     var regionRows = features.features.map(function (f) { return rows[f.properties.cduid]; }).filter(Boolean);
     var regionTotals = CV.profile.aggregate(regionRows);
@@ -141,11 +80,18 @@
       return rows[feature.properties.cduid];
     }
 
+    function outline(cduid) {
+      if (cduid === state.pinned) return { weight: 2.5, color: themeColor("--accent") };
+      if (cduid === state.vs) return { weight: 2.5, color: themeColor("--compare") };
+      return {};
+    }
+
     function style(feature) {
-      var pinned = feature.properties.cduid === state.pinned ? PINNED_STYLE : {};
-      if (state.view === "dots") return Object.assign({}, DOT_STYLE, pinned);
+      var highlight = outline(feature.properties.cduid);
+      if (state.view === "dots") return Object.assign({}, DOT_STYLE, { color: themeColor("--edge"), fillColor: themeColor("--land") }, highlight);
       var row = rowFor(feature);
-      return Object.assign({}, MAP_STYLE, { fillColor: scale.colorFor(row ? state.metric.value(row, year()) : null) }, pinned);
+      var fill = scale.colorFor(row ? state.metric.value(row, year()) : null);
+      return Object.assign({}, MAP_STYLE, { color: themeColor("--bg"), fillColor: fill }, highlight);
     }
 
     function tooltip(layer) {
@@ -153,14 +99,15 @@
       var value = state.view === "dots"
         ? CV.format.value(row && row["total_" + year()], "count") + " people"
         : CV.format.value(row ? state.metric.value(row, year()) : null, state.metric.unit);
-      var tip = el("div");
-      tip.append(el("strong", null, layer.feature.properties.name), el("span", null, value));
+      var tip = ui.el("div");
+      tip.append(ui.el("strong", null, layer.feature.properties.name), ui.el("span", null, value));
       return tip;
     }
 
     var map = L.map("map", { zoomSnap: 0.25, zoomControl: false });
     L.control.zoom({ position: "topright" }).addTo(map);
     map.attributionControl.addAttribution(ATTRIBUTION);
+    themeControl(toggleTheme).addTo(map);
     map.createPane("dots").style.zIndex = 450;
 
     var divisions = L.geoJSON(features, {
@@ -168,9 +115,9 @@
       onEachFeature: function (feature, layer) {
         layer.bindTooltip(tooltip, { sticky: true, className: "map-tip", direction: "top", offset: [0, -10] });
         layer.on({
-          mouseover: function () { layer.setStyle(HOVER_STYLE).bringToFront(); },
+          mouseover: function () { layer.setStyle({ weight: 2, color: themeColor("--text") }).bringToFront(); },
           mouseout: function () { divisions.resetStyle(layer); },
-          click: function () { select(feature.properties.cduid, true); },
+          click: function () { select(feature.properties.cduid, true, true); },
         });
       },
     }).addTo(map);
@@ -187,18 +134,37 @@
       return dotCache[key];
     }
 
-    function select(cduid, zoom) {
+    function toggleTheme() {
+      ui.toggleTheme();
+      divisions.setStyle(style);
+    }
+
+    function select(cduid, zoom, focus) {
       var layer = layerFor(cduid);
       if (!layer) return;
       state.pinned = cduid;
+      if (state.vs === cduid) state.vs = null;
       var padding = window.innerWidth > NARROW ? DRAWER_WIDTH : 0;
       if (zoom) map.fitBounds(layer.getBounds(), { maxZoom: 9, paddingBottomRight: [padding, 0] });
+      render();
+      if (focus) drawer.querySelector(".place-name").focus({ preventScroll: true });
+    }
+
+    function compareWith(cduid) {
+      state.vs = cduid;
       render();
     }
 
     function closeDrawer() {
       state.pinned = null;
+      state.vs = null;
       render();
+    }
+
+    function baseline() {
+      var layer = state.vs && layerFor(state.vs);
+      if (!layer) return { row: regionTotals, name: region.title, isDivision: false };
+      return { row: rowFor(layer.feature), name: layer.feature.properties.name, isDivision: true };
     }
 
     function renderDrawer() {
@@ -209,11 +175,13 @@
         row: rowFor(layer.feature),
         name: layer.feature.properties.name,
         rows: regionRows,
-        region: regionTotals,
+        base: baseline(),
         regionName: region.title,
         year: year(),
         metric: state.metric,
-        onSelect: function (cduid) { select(cduid, true); },
+        onSelect: function (cduid) { select(cduid, true, true); },
+        onCompare: compareWith,
+        onClearCompare: function () { compareWith(null); },
       }, closeDrawer);
     }
 
@@ -228,7 +196,7 @@
       var scheme = state.scheme;
       var total = regionRows.reduce(function (sum, r) { return sum + (scheme.total(r, year()) || 0); }, 0);
       var who = scheme.unit === "people" ? region.people : region.title + " households";
-      headline.textContent = millions(total) + " " + who + ", by " + scheme.label.toLowerCase();
+      headline.textContent = ui.millions(total) + " " + who + ", by " + scheme.label.toLowerCase();
       intro.textContent = "One dot = " + COUNT.format(PER_DOT) + " " + scheme.unit + ", placed at random inside its census division and coloured by " +
         scheme.label.toLowerCase() + ". " + COUNT.format(dotsFor(scheme, year()).length) + " dots in this view. Dots show how many, not exactly where within a division.";
     }
@@ -237,27 +205,20 @@
       var isDots = state.view === "dots";
       document.getElementById("map-controls").hidden = isDots;
       document.getElementById("dot-controls").hidden = !isDots;
-      renderViewToggle(document.getElementById("view-toggle"), state.view, function (view) { state.view = view; render(); });
-      renderTimeline(document.getElementById("timeline"), activeYears(), year(), function (y) { state.year = y; render(); });
+      ui.renderViewToggle(document.getElementById("view-toggle"), state.view, function (view) { state.view = view; render(); });
+      ui.renderTimeline(document.getElementById("timeline"), activeYears(), year(), function (y) { state.year = y; render(); });
       if (isDots) {
-        renderDotLegend(document.getElementById("dot-legend"), state.scheme);
-        renderChips(document.getElementById("chips"), state.scheme, function (s) { state.scheme = s; render(); });
+        ui.renderDotLegend(document.getElementById("dot-legend"), state.scheme);
+        ui.renderChips(document.getElementById("chips"), state.scheme, function (s) { state.scheme = s; render(); });
         return;
       }
-      renderLegend(document.getElementById("legend"), state.metric, year(), scale);
+      ui.renderLegend(document.getElementById("legend"), state.metric, year(), scale);
     }
 
     function queryString(regionId) {
       var query = "?region=" + regionId + "&view=" + state.view + "&metric=" + state.metric.id + "&dots=" + state.scheme.id + "&year=" + year();
-      return regionId === region.id && state.pinned ? query + "&cd=" + state.pinned : query;
-    }
-
-    function renderRegionLinks() {
-      document.querySelectorAll("a[data-region]").forEach(function (a) {
-        a.href = queryString(a.dataset.region);
-        if (a.dataset.region === region.id) a.setAttribute("aria-current", "page");
-        else a.removeAttribute("aria-current");
-      });
+      if (regionId !== region.id || !state.pinned) return query;
+      return query + "&cd=" + state.pinned + (state.vs ? "&vs=" + state.vs : "");
     }
 
     function renderMap() {
@@ -278,14 +239,22 @@
       renderHeadline();
       renderControls();
       renderDrawer();
-      renderRegionLinks();
       document.body.dataset.view = state.view;
       history.replaceState(null, "", queryString(region.id));
     }
 
     document.title = region.title + " · Canadian Census Viewer";
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && state.pinned) closeDrawer(); });
-    renderMetricPicker(document.getElementById("metric"), state.metric, function (metric) { state.metric = metric; render(); });
+    ui.renderMetricPicker(document.getElementById("metric"), state.metric, function (metric) { state.metric = metric; render(); });
+    ui.renderRegionSelect(document.getElementById("region"), CV.regions.list, region.id, function (id) { location.search = queryString(id); });
+    ui.renderSearch(document.getElementById("search"), document.getElementById("search-list"), ui.searchOptions(features.features, !region.pruids), function (cduid) {
+      select(cduid, true, true);
+    });
+    document.getElementById("collapse").addEventListener("click", function (e) {
+      var collapsed = document.body.classList.toggle("collapsed");
+      e.currentTarget.setAttribute("aria-expanded", String(!collapsed));
+      e.currentTarget.textContent = collapsed ? "Show controls" : "Hide controls";
+    });
     render();
     if (state.pinned) select(state.pinned, true);
   }

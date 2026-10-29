@@ -24,9 +24,13 @@
     }, {});
   }
 
-  function compare(metric, row, region, year) {
+  function comparable(metric, isDivision) {
+    return isDivision || (metric.additive !== false && metric.unit !== "count");
+  }
+
+  function compare(metric, row, region, year, isDivision) {
     var value = metric.value(row, year);
-    var regionValue = metric.additive === false || metric.unit === "count" ? null : metric.value(region, year);
+    var regionValue = comparable(metric, isDivision) ? metric.value(region, year) : null;
     var ratio = isMissing(value) || !regionValue ? null : value / regionValue;
     return { value: value, region: regionValue, ratio: ratio };
   }
@@ -128,7 +132,15 @@
       .map(function (d) { return d.row; });
   }
 
+  function joinRows(ageSex, census) {
+    return Object.keys(ageSex).reduce(function (rows, id) {
+      rows[id] = Object.assign({ cduid: id }, ageSex[id], census[id]);
+      return rows;
+    }, {});
+  }
+
   CV.profile = {
+    joinRows: joinRows,
     AGE_GROUPS: AGE_GROUPS,
     aggregate: aggregate,
     compare: compare,

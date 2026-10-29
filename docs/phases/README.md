@@ -10,8 +10,8 @@ The v2 plan (2026-10-25) expands the viewer from a single population map into a 
 | 3 | Metrics part 1 (2016 age/sex/density) + census-year timeline | Done, committed `b2c198b`, `ca6cb50` | [phase-3-metrics-part-1.md](phase-3-metrics-part-1.md) |
 | 4 | Metrics part 2 from the 2016 Census Profile: income, housing, immigration, language, education, commute | Done, committed `32a3688` | [phase-4-metrics-part-2.md](phase-4-metrics-part-2.md) |
 | 5 | Map redesign: concept F interface, dot-density view, concept C division profiles | Done, committed `d738ab0` (plus fix `9c2768c`) | [phase-5-map-redesign.md](phase-5-map-redesign.md) |
-| 6 | Title page in the F style, plus map views: search, compare, province filter, themes, accessibility | In progress | — |
-| 7 | Checks: Playwright smoke tests, Lighthouse, README | Planned | — |
+| 6 | Title page in the F style, plus map views: search, compare, province filter, themes, accessibility | Done, **not committed** | [phase-6-views-and-title-page.md](phase-6-views-and-title-page.md) |
+| 7 | Checks: Playwright smoke tests, Lighthouse, README | Next | — |
 
 ## Working constraints
 

@@ -1,179 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>    	
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link href="https://fonts.googleapis.com/css?family=Tajawal:400,600,800" rel="stylesheet" data-n-head="true">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Canadian Census Viewer</title>
-        <style>
-            body {
-                font-family: Tajawal,Helvetica,Arial,sans-serif;
-                background: #181a1b;
-                color: #f2f3f7;
-                margin: 0;
-                min-height: 100vh;
-            }
-            .container {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                width: 100%;
-                max-width: 1100px;
-                margin: 0 auto;
-                padding: 40px 0 0 0;
-            }
-            header {
-                width: 100%;
-                text-align: center;
-                margin-bottom: 32px;
-            }
-            header h1 {
-                font-weight: 700;
-                letter-spacing: .2px;
-                margin-bottom: 10px;
-                font-size: 2rem;
-            }
-            .subhead {
-                color: #b7bdc8;
-                max-width: 70ch;
-                margin: 0 auto 32px auto;
-                font-size: 1.05rem;
-                text-align: center;
-            }
-                    .map-list {
-                        display: flex;
-                        flex-direction: row;
-                        gap: 32px;
-                        width: 100%;
-                        justify-content: flex-start;
-                        align-items: flex-start;
-                    }
-            .map-card {
-                background: #23262a;
-                border: 1.5px solid #2a2f37;
-                border-radius: 10px;
-                box-shadow: 0 4px 16px rgba(0,0,0,.18);
-                margin: 0;
-                padding: 0;
-                width: 520px;
-                min-width: 320px;
-                max-width: 520px;
-                display: flex;
-                flex-direction: column;
-            }
-            .card-header-row {
-                display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: flex-start;
-                gap: 18px;
-                padding: 18px 22px 0 22px;
-            }
-            .card-header-row h3 {
-                margin: 0;
-                font-size: 1.08rem;
-                font-weight: 600;
-                color: #f2f3f7;
-                flex: 1 1 0;
-                text-align: left;
-            }
-            .card-header-row .blurb {
-                color: #b7bdc8;
-                font-size: 0.98rem;
-                margin: 0;
-                flex: 2 1 0;
-                text-align: right;
-                min-width: 0;
-                word-break: break-word;
-            }
-            .map-card figure {
-                margin: 0;
-                padding: 0 0 18px 0;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                background: none;
-            }
-            .map-card img {
-                width: 100%;
-                max-width: 470px;
-                height: 375px;
-                border: 5px solid #fff;
-                border-radius: 0;
-                background: #222;
-                display: block;
-                margin: 0 auto;
-                box-shadow: none;
-            }
-            .btn {
-                display: inline-block;
-                padding: 8px 14px;
-                border-radius: 8px;
-                background: #2a63ff;
-                color: #fff;
-                text-decoration: none;
-                font-weight: 600;
-                outline-offset: 2px;
-                margin-top: 10px;
-                transition: background 0.2s;
-            }
-            .btn:focus,
-            .btn:hover {
-                background: #1741b6;
-            }
-            footer {
-                margin-top: 38px;
-                text-align: center;
-                color: #b7bdc8;
-                opacity: .85;
-                font-size: 0.98em;
-                background: none;
-                position: static;
-                width: 100%;
-            }
-        </style>
+    <script>try { var t = localStorage.getItem("cv-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/tokens.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font: 15px/1.5 Inter, system-ui, sans-serif;
+        }
 
-  </head>
+        a { color: inherit; }
+        button { font: inherit; color: inherit; cursor: pointer; }
+        .muted { color: var(--muted); }
+        .error { color: var(--down); }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-    <body>
-        <main class="container">
-            <header>
-                <h1>Welcome to the Canadian Census Viewer</h1>
-                <p class="subhead">View census district and sub-district maps at federal, provincial, and municipal levels across Canada.</p>
-            </header>
-            <section class="map-list">
-                <article class="map-card">
-                    <div class="card-header-row">
-                        <h3>Provincial Census District Population Choropleth Map</h3>
-                        <span class="blurb">Explore Ontario's census districts by population. Hover or click on regions to see detailed data and interact with the map.</span>
-                    </div>
-                    <figure>
-                        <a href="map.html?region=ontario" tabindex="-1">
-                            <img src="ontario-map/ontario-image.png" alt="Map of Ontario showing provincial census district populations" class="responsive-image" />
-                        </a>
-                        <figcaption style="display:none"></figcaption>
-                        <a class="btn" href="map.html?region=ontario">Open Map</a>
-                    </figure>
-                </article>
-                <article class="map-card">
-                    <div class="card-header-row">
-                        <h3>Federal Census District Population Choropleth Map</h3>
-                        <span class="blurb">Explore Canada's census districts by population. Hover or click on regions to see detailed data and interact with the map.</span>
-                    </div>
-                    <figure>
-                        <a href="map.html?region=canada" tabindex="-1">
-                            <img src="canada-map/canada-image.png" alt="Map of Canada showing federal census district populations" class="responsive-image" />
-                        </a>
-                        <figcaption style="display:none"></figcaption>
-                        <a class="btn" href="map.html?region=canada">Open Map</a>
-                    </figure>
-                </article>
+        .page { max-width: 1160px; margin: 0 auto; padding: 24px 24px 48px; }
+
+        .top { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
+        .logo-mark {
+            display: grid;
+            place-items: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: var(--accent);
+            color: #1a0d05;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .icon-button {
+            width: 38px;
+            height: 38px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--raised);
+            font-size: 18px;
+        }
+
+        .hero { max-width: 760px; padding: 72px 0 48px; }
+        .eyebrow {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        h1 { font: 700 clamp(34px, 6vw, 56px)/1.05 "Space Grotesk", Inter, sans-serif; letter-spacing: -.02em; }
+        .lede { margin-top: 18px; max-width: 60ch; font-size: 17px; color: var(--muted); }
+        .search-row { margin-top: 28px; max-width: 520px; }
+        .search {
+            width: 100%;
+            padding: 13px 16px;
+            font: inherit;
+            color: var(--text);
+            background: var(--raised);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+        }
+        .search::placeholder { color: var(--muted); }
+
+        h2 { font: 700 22px "Space Grotesk", Inter, sans-serif; margin-bottom: 16px; }
+
+        .views { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+        .view-card {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            text-decoration: none;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: var(--card);
+            transition: border-color .15s, transform .15s;
+        }
+        .view-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .thumb { display: block; width: 100%; height: 190px; background: var(--bg); }
+        .view-text { padding: 14px 16px 18px; }
+        .view-text h3 { font: 700 18px "Space Grotesk", Inter, sans-serif; }
+        .view-text p { margin-top: 4px; font-size: 14px; }
+
+        .regions-section { margin-top: 48px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            padding: 6px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--raised);
+            text-decoration: none;
+            color: var(--muted);
+        }
+        .chip:hover { color: var(--text); border-color: var(--accent); }
+
+        footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+        @media (prefers-reduced-motion: reduce) { .view-card { transition: none; } .view-card:hover { transform: none; } }
+        @media (max-width: 700px) { .page { padding: 16px 16px 32px; } .hero { padding: 40px 0 32px; } }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header class="top">
+            <a class="logo" href="main.html"><span class="logo-mark" aria-hidden="true">C</span>Census Viewer</a>
+            <button class="icon-button" id="theme" type="button" aria-label="Switch between dark and light theme">◐</button>
+        </header>
+
+        <main>
+            <section class="hero">
+                <span class="eyebrow">2016 Census · 293 census divisions · 2006–2016</span>
+                <h1>Explore Canada, one census division at a time</h1>
+                <p class="lede">Colour the map by 27 measures of population, age, income, housing, language, immigration, education and commuting, or see where people live as dots. Click any division for a plain-language profile.</p>
+                <div class="search-row">
+                    <label class="eyebrow" for="search">Find a census division</label>
+                    <input class="search" id="search" list="search-list" placeholder="Type a name, e.g. Montréal" autocomplete="off">
+                    <datalist id="search-list"></datalist>
+                </div>
+            </section>
+
+            <section aria-labelledby="views-heading">
+                <h2 id="views-heading">Start with a view</h2>
+                <div class="views" id="views"></div>
+            </section>
+
+            <section class="regions-section" aria-labelledby="regions-heading">
+                <h2 id="regions-heading">Browse by province or territory</h2>
+                <nav class="chips" id="regions" aria-labelledby="regions-heading"></nav>
             </section>
         </main>
+
         <footer>
-            <p>Tip: For best results, open <b>main.html</b> in your browser. All links and images use relative paths, so you can download and use this project on your own computer without a server.</p>
+            Source: Statistics Canada, 2016 Census (Age and Sex Highlight Tables; Census Profile) and cartographic boundary files. Open Government Licence – Canada.
+            Works straight from disk: open <b>main.html</b> in a browser.
+            · <a href="https://github.com/caelwynder/Canadian-Census-Viewer">GitHub</a>
         </footer>
-    </body>
+    </div>
+
+    <script src="data/census-boundaries.js"></script>
+    <script src="data/census-age-sex-2016.js"></script>
+    <script src="data/census-profile-2016.js"></script>
+    <script src="js/format.js"></script>
+    <script src="js/breaks.js"></script>
+    <script src="js/metrics.js"></script>
+    <script src="js/regions.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/dots.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/thumbnails.js"></script>
+    <script src="js/home.js"></script>
+    <script>CensusViewer.home.start();</script>
+</body>
 </html>

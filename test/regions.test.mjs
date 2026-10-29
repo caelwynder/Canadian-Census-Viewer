@@ -20,6 +20,19 @@ test("fromSearch falls back to Canada for a missing or unknown region", () => {
   assert.equal(regions.fromSearch("?region=atlantis").id, "canada");
 });
 
+test("every province and territory is a region", () => {
+  assert.equal(regions.list.length, 14);
+  assert.equal(regions.fromSearch("?region=quebec").pruids[0], "24");
+  assert.equal(regions.fromSearch("?region=british-columbia").title, "British Columbia");
+  assert.equal(regions.fromSearch("?region=quebec").people, "people in Quebec");
+  assert.equal(regions.fromSearch("?region=ontario").people, "Ontarians");
+});
+
+test("Quebec keeps only features in province 24", () => {
+  const ids = regions.select(fc, regions.fromSearch("?region=quebec")).features.map((f) => f.properties.cduid);
+  assert.deepEqual(ids, ["2466"]);
+});
+
 test("Ontario keeps only features in province 35", () => {
   const ids = regions.select(fc, regions.fromSearch("?region=ontario")).features.map((f) => f.properties.cduid);
   assert.deepEqual(ids, ["3520"]);

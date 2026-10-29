@@ -39,6 +39,13 @@ test("compare leaves the region out for medians and rates", () => {
   assert.equal(c.ratio, null);
 });
 
+test("compare against another division includes medians and counts", () => {
+  const income = profile.compare(metrics.byId("household_income"), big, { ...mid, householdIncome: 40000 }, 2016, true);
+  assert.equal(income.region, 40000);
+  assert.equal(income.ratio, 1.25);
+  assert.equal(profile.compare(metrics.byId("population"), big, mid, 2016, true).ratio, 2);
+});
+
 test("compare skips the region for raw counts", () => {
   const c = profile.compare(metrics.byId("population"), big, region, 2016);
   assert.equal(c.value, 1000);
@@ -90,4 +97,9 @@ test("growth indexes population to the first census", () => {
 test("similar picks the divisions closest in population", () => {
   const extra = row("5", 450, 450, 50, 300, 100);
   assert.deepEqual(plain(profile.similar([...rows, extra], mid, 2016, 2).map((r) => r.cduid)), ["5", "1"]);
+});
+
+test("joinRows merges both tables per division and adds its code", () => {
+  const rows = profile.joinRows({ 3520: { name: "Toronto", total_2016: 5 } }, { 3520: { landArea: 2 } });
+  assert.deepEqual(plain(rows), { 3520: { cduid: "3520", name: "Toronto", total_2016: 5, landArea: 2 } });
 });

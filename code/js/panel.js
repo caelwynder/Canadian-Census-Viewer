@@ -22,6 +22,10 @@
     return CV.format.value(n, unit);
   }
 
+  function compareTo(ctx, metric, year) {
+    return CV.profile.compare(metric, ctx.row, ctx.base.row, year, ctx.base.isDivision);
+  }
+
   function badge(ratio, regionName) {
     if (ratio === null) return el("span");
     var tone = ratio >= BADGE_HIGH ? " high" : ratio <= BADGE_LOW ? " low" : "";
@@ -49,15 +53,15 @@
   function growthCard(ctx) {
     var change = CV.metrics.byId("change");
     if (change.years.indexOf(ctx.year) === -1) return card("Growth", "n/a", "No earlier census in this set");
-    var c = CV.profile.compare(change, ctx.row, ctx.region, ctx.year);
-    var node = card("Growth " + (ctx.year - 5) + "–" + String(ctx.year).slice(2), fmt(c.value, "change"), ctx.regionName + " " + fmt(c.region, "change"));
+    var c = compareTo(ctx, change, ctx.year);
+    var node = card("Growth " + (ctx.year - 5) + "–" + String(ctx.year).slice(2), fmt(c.value, "change"), ctx.base.name + " " + fmt(c.region, "change"));
     if (c.value !== null) node.classList.add(c.value < 0 ? "down" : "up");
     return node;
   }
 
   function shareCard(label, id, ctx) {
-    var c = CV.profile.compare(CV.metrics.byId(id), ctx.row, ctx.region, ctx.year);
-    return card(label, fmt(c.value, "percent"), ctx.regionName + " " + fmt(c.region, "percent"), badge(c.ratio, ctx.regionName));
+    var c = compareTo(ctx, CV.metrics.byId(id), ctx.year);
+    return card(label, fmt(c.value, "percent"), ctx.base.name + " " + fmt(c.region, "percent"), badge(c.ratio, ctx.base.name));
   }
 
   function cards(ctx) {
@@ -94,7 +98,7 @@
 
   function growthChart(ctx) {
     var own = CV.profile.growth(ctx.row);
-    var region = CV.profile.growth(ctx.region);
+    var region = CV.profile.growth(ctx.base.row);
     var values = own.concat(region).map(function (p) { return p.index; }).filter(function (v) { return v !== null; });
     var min = Math.min.apply(null, values.concat(100)) - 1;
     var max = Math.max.apply(null, values.concat(100)) + 1;
@@ -111,7 +115,7 @@
     });
     var last = own.length - 1;
     var section = box("Growth since " + own[0].year, el("span", "muted mono", "index, " + own[0].year + " = 100"));
-    section.append(chart, keyLegend(ctx.name + " " + fmt(own[last].index, "ratio"), ctx.regionName + " " + fmt(region[last].index, "ratio")));
+    section.append(chart, keyLegend(ctx.name + " " + fmt(own[last].index, "ratio"), ctx.base.name + " " + fmt(region[last].index, "ratio")));
     return section;
   }
 
@@ -131,10 +135,10 @@
 
   function ageBars(ctx) {
     var groups = [["0–14", "share_0_14"], ["15–64", "share_15_64"], ["65+", "share_65p"], ["85+", "share_85p"]].map(function (g) {
-      return { label: g[0], cmp: CV.profile.compare(CV.metrics.byId(g[1]), ctx.row, ctx.region, ctx.year) };
+      return { label: g[0], cmp: compareTo(ctx, CV.metrics.byId(g[1]), ctx.year) };
     });
     var top = Math.max.apply(null, groups.map(function (g) { return Math.max(g.cmp.value || 0, g.cmp.region || 0); }));
-    var section = box("Age structure", keyLegend(ctx.name, ctx.regionName));
+    var section = box("Age structure", keyLegend(ctx.name, ctx.base.name));
     groups.forEach(function (g) { section.append(ageRow(g.label, g.cmp, top)); });
     return section;
   }
@@ -142,11 +146,11 @@
   function themeItem(id, ctx) {
     var metric = CV.metrics.byId(id);
     var year = CV.metrics.yearFor(metric, ctx.year);
-    var c = CV.profile.compare(metric, ctx.row, ctx.region, year);
+    var c = compareTo(ctx, metric, year);
     var item = el("div", id === ctx.metric.id ? "theme-item active" : "theme-item");
     var value = el("dd", "mono", fmt(c.value, metric.unit) + (year === ctx.year ? "" : " (" + year + ")"));
-    var region = el("span", "theme-region", c.region === null ? "" : ctx.regionName + " " + fmt(c.region, metric.unit));
-    item.append(el("dt", null, metric.label), value, region, badge(c.ratio, ctx.regionName));
+    var region = el("span", "theme-region", c.region === null ? "" : ctx.base.name + " " + fmt(c.region, metric.unit));
+    item.append(el("dt", null, metric.label), value, region, badge(c.ratio, ctx.base.name));
     return item;
   }
 
@@ -164,13 +168,33 @@
     section.append(el("h3", "eyebrow", "Similar-sized divisions"));
     CV.profile.similar(ctx.rows, ctx.row, ctx.year, SIMILAR_COUNT).forEach(function (r) {
       var growth = change.years.indexOf(ctx.year) === -1 ? "" : " · " + fmt(change.value(r, ctx.year), "change");
-      var button = el("button", "similar");
-      button.type = "button";
-      button.append(el("strong", null, r.name), el("span", "muted", fmt(r["total_" + ctx.year], "count") + growth));
-      button.addEventListener("click", function () { ctx.onSelect(r.cduid); });
-      section.append(button);
+      var item = el("div", "similar");
+      var open = el("button", "similar-open");
+      open.type = "button";
+      open.append(el("strong", null, r.name), el("span", "muted", fmt(r["total_" + ctx.year], "count") + growth));
+      open.addEventListener("click", function () { ctx.onSelect(r.cduid); });
+      item.append(open, actionButton("+ Compare", "Compare " + ctx.name + " with " + r.name, function () { ctx.onCompare(r.cduid); }));
+      section.append(item);
     });
     return section;
+  }
+
+  function actionButton(text, label, onClick) {
+    var button = el("button", "pill-button", text);
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function compareBanner(ctx) {
+    if (!ctx.base.isDivision) return el("span");
+    var banner = el("div", "compare-banner");
+    banner.append(
+      el("span", null, "Comparing with " + ctx.base.name),
+      actionButton("× Clear", "Stop comparing with " + ctx.base.name, ctx.onClearCompare)
+    );
+    return banner;
   }
 
   function header(ctx, onClose) {
@@ -183,11 +207,18 @@
     return head;
   }
 
+  function heading(name) {
+    var h = el("h2", "place-name", name);
+    h.tabIndex = -1;
+    return h;
+  }
+
   function render(container, ctx, onClose) {
     container.replaceChildren(
       header(ctx, onClose),
-      el("h2", "place-name", ctx.name),
+      heading(ctx.name),
       el("p", "muted", "Census division " + ctx.row.cduid + " · " + ctx.year + " Census"),
+      compareBanner(ctx),
       summaryParagraph(CV.profile.summary(ctx.row, ctx.rows, ctx.regionName, ctx.year)),
       cards(ctx),
       growthChart(ctx),
