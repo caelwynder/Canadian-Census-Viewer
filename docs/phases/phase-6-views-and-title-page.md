@@ -1,6 +1,6 @@
 # Phase 6 — Map Views and Title Page
 
-**Status:** Complete · not yet committed
+**Status:** Complete · committed as `cb857ee feat: add province filter, search, compare, themes and new title page`
 
 ## Goal
 
@@ -42,5 +42,5 @@ Finish the map views planned for v2 (search, compare, province filter, themes, a
 
 ## Notes
 
-- `code/canada-map/` and `code/ontario-map/` (old screenshots and a 36.5 MB GeoJSON) are no longer referenced by any page. They're kept until the user decides whether to delete them.
+- `code/canada-map/`, `code/ontario-map/` and unused shapefiles were later moved to `archive/` (`bc8467c`).
 - Still open from the concepts: the "you are here" minimap (F) and download CSV / share buttons (C).

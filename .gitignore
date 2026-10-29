@@ -1,3 +1,5 @@
 node_modules/
 code/data/raw/
 .DS_Store
+test-results/
+playwright-report/

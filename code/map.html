@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Canadian Census Viewer</title>
+    <meta name="description" content="Interactive map of Canada's 2016 census divisions: 27 choropleth metrics, dot density, and plain-language profiles for every division.">
     <script>try { var t = localStorage.getItem("cv-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -256,8 +257,7 @@
         }
         .theme-item dt { color: var(--muted); }
         .theme-item dd { text-align: right; }
-        .theme-region { font-size: 12px; color: var(--muted); }
-        .theme-item .badge { justify-self: end; align-self: center; }
+        .theme-meta { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
         .theme-item.active dt, .theme-item.active dd { color: var(--accent); }
 
         .similar { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }

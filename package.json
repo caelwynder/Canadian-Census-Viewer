@@ -6,9 +6,11 @@
     "data:fetch": "node scripts/fetch-data.mjs",
     "data:build": "node scripts/build-data.mjs",
     "test": "node --test 'scripts/**/*.test.mjs' 'test/**/*.test.mjs'",
-    "test:coverage": "node --test --experimental-test-coverage 'scripts/**/*.test.mjs' 'test/**/*.test.mjs'"
+    "test:coverage": "node --test --experimental-test-coverage 'scripts/**/*.test.mjs' 'test/**/*.test.mjs'",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "mapshaper": "0.7.71"
   }
 }

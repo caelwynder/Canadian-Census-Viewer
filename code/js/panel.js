@@ -149,8 +149,9 @@
     var c = compareTo(ctx, metric, year);
     var item = el("div", id === ctx.metric.id ? "theme-item active" : "theme-item");
     var value = el("dd", "mono", fmt(c.value, metric.unit) + (year === ctx.year ? "" : " (" + year + ")"));
-    var region = el("span", "theme-region", c.region === null ? "" : ctx.base.name + " " + fmt(c.region, metric.unit));
-    item.append(el("dt", null, metric.label), value, region, badge(c.ratio, ctx.base.name));
+    var meta = el("dd", "theme-meta");
+    meta.append(el("span", null, c.region === null ? "" : ctx.base.name + " " + fmt(c.region, metric.unit)), badge(c.ratio, ctx.base.name));
+    item.append(el("dt", null, metric.label), value, meta);
     return item;
   }
 
