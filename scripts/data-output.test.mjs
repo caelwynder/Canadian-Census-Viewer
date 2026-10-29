@@ -2,22 +2,24 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import vm from "node:vm";
-import { BOUNDARIES_OUT, AGE_SEX_OUT } from "./paths.mjs";
+import { BOUNDARIES_OUT, AGE_SEX_OUT, PROFILE_OUT } from "./paths.mjs";
 
-const built = existsSync(BOUNDARIES_OUT) && existsSync(AGE_SEX_OUT);
+const OUTPUTS = [BOUNDARIES_OUT, AGE_SEX_OUT, PROFILE_OUT];
+const built = OUTPUTS.every((file) => existsSync(file));
 
 function loadCensus() {
   const context = { window: {} };
   vm.createContext(context);
-  for (const file of [BOUNDARIES_OUT, AGE_SEX_OUT]) vm.runInContext(readFileSync(file, "utf8"), context);
+  for (const file of OUTPUTS) vm.runInContext(readFileSync(file, "utf8"), context);
   return JSON.parse(JSON.stringify(context.window.CENSUS));
 }
 
 test("generated data files load in a browser-like global scope and join one-to-one", { skip: !built && "run npm run data:build first" }, () => {
-  const { boundaries, ageSex2016 } = loadCensus();
+  const { boundaries, ageSex2016, profile2016 } = loadCensus();
   const ids = boundaries.features.map((f) => f.properties.cduid).sort();
   assert.equal(ids.length, 293);
   assert.deepEqual(ids, Object.keys(ageSex2016).sort());
+  assert.deepEqual(ids, Object.keys(profile2016).sort());
 });
 
 test("Ontario is a plain filter on the national data", { skip: !built && "run npm run data:build first" }, () => {
@@ -38,4 +40,10 @@ test("Toronto carries population, age and sex counts for all three census years"
 test("accented names are stored correctly", { skip: !built && "run npm run data:build first" }, () => {
   const names = Object.values(loadCensus().ageSex2016).map((t) => t.name);
   assert.ok(names.includes("Les Îles-de-la-Madeleine"));
+});
+
+test("every census division has a positive land area", { skip: !built && "run npm run data:build first" }, () => {
+  const { profile2016 } = loadCensus();
+  assert.equal(profile2016["3520"].landArea, 630.2);
+  for (const [id, p] of Object.entries(profile2016)) assert.ok(p.landArea > 0, id);
 });

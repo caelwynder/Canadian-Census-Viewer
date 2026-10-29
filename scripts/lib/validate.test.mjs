@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkJoin, checkCanadaTotal } from "./validate.mjs";
+import { checkJoin, checkCanadaTotal, checkProfile } from "./validate.mjs";
 
 const fc = (...ids) => ({ type: "FeatureCollection", features: ids.map((cduid) => ({ properties: { cduid } })) });
 
@@ -31,4 +31,32 @@ test("checkCanadaTotal reports a sum outside the tolerance", () => {
 
 test("checkCanadaTotal ignores suppressed (null) totals", () => {
   assert.deepEqual(checkCanadaTotal({ a: { total_2016: 1000 }, b: { total_2016: null } }, 1000, 0), []);
+});
+
+const ages = { 1001: { total_2016: 270350 } };
+const goodProfile = { 1001: { population: 270348, landArea: 9220.61, density: 29.3 } };
+
+test("checkProfile accepts a profile that agrees with the age table", () => {
+  assert.deepEqual(checkProfile(goodProfile, ages), []);
+});
+
+test("checkProfile reports missing rows and land areas", () => {
+  assert.deepEqual(checkProfile({}, ages), ["Census row 1001 has no profile row"]);
+  assert.deepEqual(checkProfile({ 1001: { ...goodProfile[1001], landArea: null } }, ages), ["Profile 1001 has no land area"]);
+});
+
+test("checkProfile reports a population that differs by more than rounding", () => {
+  assert.deepEqual(checkProfile({ 1001: { ...goodProfile[1001], population: 200000 } }, ages), [
+    "Profile 1001 population 200000 differs from age table 270350",
+    "Profile 1001 density 29.3 does not match 200000 / 9220.61",
+  ]);
+});
+
+test("checkProfile skips the population check when the age table is suppressed", () => {
+  assert.deepEqual(checkProfile(goodProfile, { 1001: { total_2016: null } }), []);
+});
+
+test("checkProfile allows for land area being rounded before density is published", () => {
+  const toronto = { 3520: { population: 2731571, landArea: 630.2, density: 4334.4 } };
+  assert.deepEqual(checkProfile(toronto, { 3520: { total_2016: 2731570 } }), []);
 });
