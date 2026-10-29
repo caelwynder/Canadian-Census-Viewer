@@ -1,6 +1,6 @@
 # Phase 3 — Metrics Part 1 and Census-Year Timeline
 
-**Status:** Complete · **not yet committed** (working tree of `phase-1-2-census-engine`)
+**Status:** Complete · committed as `b2c198b feat: add land area from 2016 census profile` and `ca6cb50 feat: add age, density and sex metrics with census-year timeline`
 
 ## Goal
 

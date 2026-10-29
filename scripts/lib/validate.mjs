@@ -44,3 +44,21 @@ function profileProblems(id, profile, row) {
 export function checkProfile(profile, table) {
   return Object.entries(table).flatMap(([id, row]) => profileProblems(id, profile[id], row));
 }
+
+const PERCENT_MAX = 100;
+
+function shareProblems(id, p, fields) {
+  return fields.flatMap((f) => {
+    const v = p[f.key];
+    if (v === null || v === undefined) return [];
+    if (f.rate && (v < 0 || v > PERCENT_MAX)) return [`Profile ${id} ${f.key} ${v} is not a percentage`];
+    const total = f.of && p[f.of];
+    // Part and total are each randomly rounded, so the part can overshoot by up to twice the rounding.
+    if (typeof total === "number" && v > total + 2 * COUNT_ROUNDING) return [`Profile ${id} ${f.key} ${v} exceeds ${f.of} ${total}`];
+    return [];
+  });
+}
+
+export function checkShares(profile, fields) {
+  return Object.entries(profile).flatMap(([id, p]) => shareProblems(id, p, fields));
+}

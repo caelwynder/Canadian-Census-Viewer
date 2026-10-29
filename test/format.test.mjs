@@ -26,6 +26,14 @@ test("formats ratios to one decimal place", () => {
   assert.equal(format.value(93.94, "ratio"), "93.9");
 });
 
+test("formats currency in whole dollars", () => {
+  assert.equal(format.value(65829.4, "currency"), "$65,829");
+});
+
+test("formats years to one decimal place", () => {
+  assert.equal(format.value(39.3, "years"), "39.3 years");
+});
+
 test("shows missing values as n/a", () => {
   assert.equal(format.value(null, "count"), "n/a");
   assert.equal(format.value(undefined, "percent"), "n/a");

@@ -5,8 +5,8 @@ import { readDbf } from "./lib/dbf.mjs";
 import { toAgeSexTable } from "./lib/census-table.mjs";
 import { buildBoundaries } from "./lib/boundaries.mjs";
 import { openZipEntry } from "./lib/zip-entry.mjs";
-import { extractProfile, PROFILE_FIELDS } from "./lib/census-profile.mjs";
-import { checkJoin, checkCanadaTotal, checkProfile } from "./lib/validate.mjs";
+import { extractProfile, publishedProfile, PROFILE_FIELDS } from "./lib/census-profile.mjs";
+import { checkJoin, checkCanadaTotal, checkProfile, checkShares } from "./lib/validate.mjs";
 import { toJsGlobal } from "./lib/js-global.mjs";
 import { AGE_SEX_DBF, AGE_SEX_OUT, BOUNDARIES_OUT, BOUNDARY_ZIP, PROFILE_OUT, PROFILE_ZIP } from "./paths.mjs";
 
@@ -36,10 +36,6 @@ async function readProfile() {
   return extractProfile(readline.createInterface({ input, crlfDelay: Infinity }), PROFILE_FIELDS);
 }
 
-function publishedProfile(profile) {
-  return Object.fromEntries(Object.entries(profile).map(([id, p]) => [id, { landArea: p.landArea }]));
-}
-
 async function main() {
   requireInput(BOUNDARY_ZIP, "Run npm run data:fetch first.");
   requireInput(PROFILE_ZIP, "Run npm run data:fetch first.");
@@ -54,12 +50,13 @@ async function main() {
     ...checkJoin(boundaries, profile),
     ...checkCanadaTotal(ageSex, CANADA_POPULATION_2016, ROUNDING_TOLERANCE),
     ...checkProfile(profile, ageSex),
+    ...checkShares(profile, PROFILE_FIELDS),
   ];
   if (problems.length) throw new Error(`Validation failed:\n- ${problems.join("\n- ")}`);
 
   writeOutput(BOUNDARIES_OUT, SOURCE_NOTE.boundaries, "boundaries", boundaries);
   writeOutput(AGE_SEX_OUT, SOURCE_NOTE.ageSex, "ageSex2016", ageSex);
-  writeOutput(PROFILE_OUT, SOURCE_NOTE.profile, "profile2016", publishedProfile(profile));
+  writeOutput(PROFILE_OUT, SOURCE_NOTE.profile, "profile2016", publishedProfile(profile, PROFILE_FIELDS));
   console.log(`${boundaries.features.length} census divisions joined; validation passed.`);
 }
 

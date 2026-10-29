@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkJoin, checkCanadaTotal, checkProfile } from "./validate.mjs";
+import { checkJoin, checkCanadaTotal, checkProfile, checkShares } from "./validate.mjs";
 
 const fc = (...ids) => ({ type: "FeatureCollection", features: ids.map((cduid) => ({ properties: { cduid } })) });
 
@@ -59,4 +59,27 @@ test("checkProfile skips the population check when the age table is suppressed",
 test("checkProfile allows for land area being rounded before density is published", () => {
   const toronto = { 3520: { population: 2731571, landArea: 630.2, density: 4334.4 } };
   assert.deepEqual(checkProfile(toronto, { 3520: { total_2016: 2731570 } }), []);
+});
+
+const shareFields = [
+  { key: "tenureTotal" },
+  { key: "renters", of: "tenureTotal" },
+  { key: "unemploymentRate", rate: true },
+];
+
+test("checkShares accepts parts within their totals and rates within 0-100", () => {
+  assert.deepEqual(checkShares({ 1001: { tenureTotal: 100, renters: 40, unemploymentRate: 8.2 } }, shareFields), []);
+});
+
+test("checkShares allows a part to exceed its total by random rounding only", () => {
+  assert.deepEqual(checkShares({ 1001: { tenureTotal: 100, renters: 108 } }, shareFields), []);
+  assert.deepEqual(checkShares({ 1001: { tenureTotal: 100, renters: 109 } }, shareFields), ["Profile 1001 renters 109 exceeds tenureTotal 100"]);
+});
+
+test("checkShares reports rates outside 0-100", () => {
+  assert.deepEqual(checkShares({ 1001: { unemploymentRate: 101 } }, shareFields), ["Profile 1001 unemploymentRate 101 is not a percentage"]);
+});
+
+test("checkShares skips suppressed values", () => {
+  assert.deepEqual(checkShares({ 1001: { tenureTotal: null, renters: 40, unemploymentRate: null } }, shareFields), []);
 });

@@ -14,6 +14,8 @@
     change: function (n) { return sign(Number(n.toFixed(1))) + ONE_DECIMAL.format(Math.abs(n)) + "%"; },
     density: function (n) { return ONE_DECIMAL.format(n) + " /km²"; },
     ratio: function (n) { return ONE_DECIMAL.format(n); },
+    currency: function (n) { return "$" + COUNT.format(n); },
+    years: function (n) { return ONE_DECIMAL.format(n) + " years"; },
   };
 
   function value(n, unit) {

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractProfile, PROFILE_FIELDS } from "./census-profile.mjs";
+import { extractProfile, publishedProfile, PROFILE_FIELDS } from "./census-profile.mjs";
 
 const row = (code, level, name, member, total) =>
   `2016,"${code}","${level}","Place",3.7,6.2,"00000","${code}","${name}",${member},,${total},...,...`;
@@ -34,4 +34,19 @@ test("stores suppressed values as null", async () => {
 test("fails if a member id no longer has the expected name", async () => {
   const shifted = [row("1001", "2", "Total private dwellings", 7, 131336)];
   await assert.rejects(extractProfile(lines(shifted), PROFILE_FIELDS), /Member 7 is "Total private dwellings", expected "Land area in square kilometres"/);
+});
+
+test("member ids and keys are unique", () => {
+  assert.equal(new Set(PROFILE_FIELDS.map((f) => f.memberId)).size, PROFILE_FIELDS.length);
+  assert.equal(new Set(PROFILE_FIELDS.map((f) => f.key)).size, PROFILE_FIELDS.length);
+});
+
+test("every share names a denominator that is also extracted", () => {
+  const keys = new Set(PROFILE_FIELDS.map((f) => f.key));
+  for (const f of PROFILE_FIELDS.filter((f) => f.of)) assert.ok(keys.has(f.of), `${f.key} of ${f.of}`);
+});
+
+test("publishedProfile drops the fields read only for cross-checks", () => {
+  const published = publishedProfile({ 1001: { population: 270348, density: 29.3, landArea: 9220.61, medianAge: 44.1 } }, PROFILE_FIELDS);
+  assert.deepEqual(published, { 1001: { landArea: 9220.61, medianAge: 44.1 } });
 });

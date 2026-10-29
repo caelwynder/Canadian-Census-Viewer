@@ -42,8 +42,30 @@ test("accented names are stored correctly", { skip: !built && "run npm run data:
   assert.ok(names.includes("Les Îles-de-la-Madeleine"));
 });
 
+test("boundary names decode accents from the Latin-1 shapefile", { skip: !built && "run npm run data:build first" }, () => {
+  const names = loadCensus().boundaries.features.map((f) => f.properties.name);
+  assert.deepEqual(names.filter((n) => n.includes("\uFFFD")), []);
+  assert.ok(names.includes("Montréal"));
+});
+
 test("every census division has a positive land area", { skip: !built && "run npm run data:build first" }, () => {
   const { profile2016 } = loadCensus();
   assert.equal(profile2016["3520"].landArea, 630.2);
   for (const [id, p] of Object.entries(profile2016)) assert.ok(p.landArea > 0, id);
+});
+
+test("Toronto carries the census profile fields behind the Phase 4 metrics", { skip: !built && "run npm run data:build first" }, () => {
+  const toronto = loadCensus().profile2016["3520"];
+  assert.equal(toronto.householdIncome, 65829);
+  assert.equal(toronto.renters, 525830);
+  assert.equal(toronto.transit, 463000);
+  assert.equal(toronto.population, undefined, "cross-check fields are not published");
+});
+
+test("profile gaps are limited to the ones StatCan publishes", { skip: !built && "run npm run data:build first" }, () => {
+  const rows = Object.entries(loadCensus().profile2016);
+  const lowIncomeMissing = rows.filter(([, p]) => p.lowIncomeRate === null).map(([id]) => id);
+  assert.ok(lowIncomeMissing.length === 10 && lowIncomeMissing.every((id) => /^6/.test(id)), "LIM-AT is not published for the territories");
+  const noImmigrantTotal = rows.filter(([, p]) => !p.immigrantTotal).map(([id]) => id).sort();
+  assert.deepEqual(noImmigrantTotal, ["4619", "4622", "4623", "4718", "5945"]);
 });
