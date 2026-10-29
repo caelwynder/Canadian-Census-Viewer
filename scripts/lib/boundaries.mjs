@@ -17,7 +17,7 @@ export function normalizeProperties({ CDUID, CDNAME, CDTYPE, PRUID, PRNAME }) {
 
 export async function buildBoundaries(sourcePath) {
   const commands = [
-    `-i "${sourcePath}" encoding=utf8`,
+    `-i "${sourcePath}" encoding=latin1`,
     "-proj wgs84",
     `-simplify ${SIMPLIFY} weighted keep-shapes`,
     `-o format=geojson precision=${PRECISION} out.json`,
