@@ -18,6 +18,14 @@ test("formats change with an explicit sign", () => {
   assert.equal(format.value(0, "change"), "0.0%");
 });
 
+test("formats density per square kilometre", () => {
+  assert.equal(format.value(4334.46, "density"), "4,334.5 /km²");
+});
+
+test("formats ratios to one decimal place", () => {
+  assert.equal(format.value(93.94, "ratio"), "93.9");
+});
+
 test("shows missing values as n/a", () => {
   assert.equal(format.value(null, "count"), "n/a");
   assert.equal(format.value(undefined, "percent"), "n/a");

@@ -10,6 +10,11 @@
     return node;
   }
 
+  function formatMetric(metric, row, year) {
+    if (!row || metric.years.indexOf(year) === -1) return "n/a";
+    return CV.format.value(metric.value(row, year), metric.unit);
+  }
+
   function legendRow(color, label) {
     var row = el("div", "legend-row");
     var swatch = el("span", "legend-swatch");
@@ -18,40 +23,76 @@
     return row;
   }
 
-  function renderLegend(container, metric, scale) {
+  function renderLegend(container, metric, year, scale) {
     var labels = CV.breaks.labels(scale.thresholds, function (n) { return CV.format.value(n, metric.unit); });
     var rows = scale.colors.map(function (color, i) { return legendRow(color, labels[i]); });
-    container.replaceChildren(el("h2", "panel-heading", metric.label), ...rows, legendRow(CV.breaks.NO_DATA_COLOR, "No data"));
+    container.replaceChildren(el("h2", "panel-heading", metric.label + ", " + year), ...rows, legendRow(CV.breaks.NO_DATA_COLOR, "No data"));
   }
 
-  function renderDetail(container, feature, row, activeMetric) {
+  function renderTrend(metric, row, year) {
+    var trend = el("div", "trend");
+    metric.years.forEach(function (y) {
+      var cell = el("div", y === year ? "trend-cell active" : "trend-cell");
+      cell.append(el("span", "trend-year", String(y)), el("span", "trend-value", formatMetric(metric, row, y)));
+      trend.append(cell);
+    });
+    return trend;
+  }
+
+  function renderDetail(container, feature, row, state) {
     if (!feature) {
       container.replaceChildren(el("p", "muted", "Hover over a census division to see its figures. Click one to zoom in."));
       return;
     }
     var list = el("dl", "detail-list");
     CV.metrics.list.forEach(function (m) {
-      var item = el("div", m.id === activeMetric.id ? "detail-item active" : "detail-item");
-      item.append(el("dt", null, m.label), el("dd", null, row ? CV.format.value(m.value(row), m.unit) : "n/a"));
+      var item = el("div", m.id === state.metric.id ? "detail-item active" : "detail-item");
+      item.append(el("dt", null, m.label), el("dd", null, formatMetric(m, row, state.year)));
       list.append(item);
     });
-    container.replaceChildren(el("h2", "detail-name", feature.properties.name), el("p", "muted", feature.properties.province), list);
+    container.replaceChildren(
+      el("h2", "detail-name", feature.properties.name),
+      el("p", "muted", feature.properties.province + " · " + state.year),
+      renderTrend(state.metric, row, state.year),
+      list
+    );
   }
 
   function renderMetricPicker(select, activeMetric, onChange) {
-    var options = CV.metrics.list.map(function (m) {
-      var option = el("option", null, m.label);
-      option.value = m.id;
-      option.selected = m.id === activeMetric.id;
-      return option;
+    var groups = CV.metrics.themes().map(function (group) {
+      var optgroup = el("optgroup");
+      optgroup.label = group.theme;
+      group.metrics.forEach(function (id) {
+        var option = el("option", null, CV.metrics.byId(id).label);
+        option.value = id;
+        option.selected = id === activeMetric.id;
+        optgroup.append(option);
+      });
+      return optgroup;
     });
-    select.replaceChildren(...options);
+    select.replaceChildren(...groups);
     select.addEventListener("change", function () { onChange(CV.metrics.byId(select.value)); });
   }
 
-  function renderRegionLinks(region, metric) {
+  function renderTimeline(container, state, onChange) {
+    var buttons = CV.metrics.YEARS.map(function (year) {
+      var button = el("button", "year-button", String(year));
+      button.type = "button";
+      button.disabled = state.metric.years.indexOf(year) === -1;
+      button.setAttribute("aria-pressed", String(year === state.year));
+      button.addEventListener("click", function () { onChange(year); });
+      return button;
+    });
+    container.replaceChildren(...buttons);
+  }
+
+  function queryString(region, state) {
+    return "?region=" + region.id + "&metric=" + state.metric.id + "&year=" + state.year;
+  }
+
+  function renderRegionLinks(region, state) {
     document.querySelectorAll("a[data-region]").forEach(function (a) {
-      a.href = "?region=" + a.dataset.region + "&metric=" + metric.id;
+      a.href = queryString({ id: a.dataset.region }, state);
       if (a.dataset.region === region.id) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
@@ -61,42 +102,47 @@
     document.getElementById("detail").replaceChildren(el("p", "error", message));
   }
 
+  function joinRows() {
+    var rows = {};
+    Object.keys(CENSUS.ageSex2016).forEach(function (id) {
+      rows[id] = Object.assign({}, CENSUS.ageSex2016[id], CENSUS.profile2016[id]);
+    });
+    return rows;
+  }
+
   function start() {
-    if (!window.CENSUS || !CENSUS.boundaries || !CENSUS.ageSex2016) {
+    if (!window.CENSUS || !CENSUS.boundaries || !CENSUS.ageSex2016 || !CENSUS.profile2016) {
       showError("Census data did not load. Run npm run data:build and reload.");
       return;
     }
+    var params = new URLSearchParams(location.search);
     var region = CV.regions.fromSearch(location.search);
-    var rows = CENSUS.ageSex2016;
+    var rows = joinRows();
     var features = CV.regions.select(CENSUS.boundaries, region);
+    var regionRows = features.features.map(function (f) { return rows[f.properties.cduid] || {}; });
     var detail = document.getElementById("detail");
-    var legend = document.getElementById("legend");
-    var state = { metric: null, scale: null, pinned: null };
+    var state = { metric: null, year: null, scale: null, pinned: null };
 
     function rowFor(feature) {
       return rows[feature.properties.cduid];
     }
 
-    function valueFor(feature, metric) {
-      var row = rowFor(feature);
-      return row ? metric.value(row) : null;
-    }
-
-    function setMetric(metric) {
-      var values = features.features.map(function (f) { return valueFor(f, metric); });
+    function setMetric(metric, year) {
       state.metric = metric;
-      state.scale = CV.breaks.scale(metric, values, CV.metrics.SEQUENTIAL);
+      state.year = CV.metrics.yearFor(metric, year);
+      state.scale = CV.breaks.scale(metric, CV.metrics.allValues(metric, regionRows), CV.metrics.SEQUENTIAL);
     }
 
     function style(feature) {
-      return Object.assign({}, BASE_STYLE, { fillColor: state.scale.colorFor(valueFor(feature, state.metric)) });
+      var row = rowFor(feature);
+      return Object.assign({}, BASE_STYLE, { fillColor: state.scale.colorFor(row ? state.metric.value(row, state.year) : null) });
     }
 
     function showFeature(feature) {
-      renderDetail(detail, feature, feature && rowFor(feature), state.metric);
+      renderDetail(detail, feature, feature && rowFor(feature), state);
     }
 
-    setMetric(CV.metrics.byId(new URLSearchParams(location.search).get("metric")));
+    setMetric(CV.metrics.byId(params.get("metric")), Number(params.get("year")));
     document.title = region.title + " · Canadian Census Viewer";
     document.getElementById("region-title").textContent = region.title + " census divisions";
 
@@ -115,18 +161,21 @@
     }).addTo(map);
     map.fitBounds(divisions.getBounds());
 
-    function render() {
-      renderLegend(legend, state.metric, state.scale);
-      renderRegionLinks(region, state.metric);
-      showFeature(state.pinned);
-      history.replaceState(null, "", "?region=" + region.id + "&metric=" + state.metric.id);
-    }
-
-    renderMetricPicker(document.getElementById("metric"), state.metric, function (metric) {
-      setMetric(metric);
+    function update(metric, year) {
+      setMetric(metric, year);
       divisions.setStyle(style);
       render();
-    });
+    }
+
+    function render() {
+      renderLegend(document.getElementById("legend"), state.metric, state.year, state.scale);
+      renderTimeline(document.getElementById("timeline"), state, function (year) { update(state.metric, year); });
+      renderRegionLinks(region, state);
+      showFeature(state.pinned);
+      history.replaceState(null, "", queryString(region, state));
+    }
+
+    renderMetricPicker(document.getElementById("metric"), state.metric, function (metric) { update(metric, state.year); });
     render();
   }
 
