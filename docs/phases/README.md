@@ -8,9 +8,9 @@ The v2 plan (2026-10-25) expands the viewer from a single population map into a 
 | 1 | Data pipeline: cartographic boundaries, small JS data files | Done, committed `b5fe17e` | [phase-1-data-pipeline.md](phase-1-data-pipeline.md) |
 | 2 | Shared map engine, single `map.html?region=` | Done, committed `808b7c9` | [phase-2-map-engine.md](phase-2-map-engine.md) |
 | 3 | Metrics part 1 (2016 age/sex/density) + census-year timeline | Done, committed `b2c198b`, `ca6cb50` | [phase-3-metrics-part-1.md](phase-3-metrics-part-1.md) |
-| 4 | Metrics part 2 from the 2016 Census Profile: income, housing, immigration, language, education, commute | Done, **not committed** | [phase-4-metrics-part-2.md](phase-4-metrics-part-2.md) |
-| 5 | Map redesign: concept F interface, dot-density view, concept C division profiles | Done, **not committed** | [phase-5-map-redesign.md](phase-5-map-redesign.md) |
-| 6 | Title page in the F style, plus map views: search, compare, province filter, themes, accessibility | Next | — |
+| 4 | Metrics part 2 from the 2016 Census Profile: income, housing, immigration, language, education, commute | Done, committed `32a3688` | [phase-4-metrics-part-2.md](phase-4-metrics-part-2.md) |
+| 5 | Map redesign: concept F interface, dot-density view, concept C division profiles | Done, committed `d738ab0` (plus fix `9c2768c`) | [phase-5-map-redesign.md](phase-5-map-redesign.md) |
+| 6 | Title page in the F style, plus map views: search, compare, province filter, themes, accessibility | In progress | — |
 | 7 | Checks: Playwright smoke tests, Lighthouse, README | Planned | — |
 
 ## Working constraints

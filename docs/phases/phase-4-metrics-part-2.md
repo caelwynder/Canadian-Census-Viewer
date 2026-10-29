@@ -1,6 +1,6 @@
 # Phase 4 — Metrics Part 2 (2016 Census Profile)
 
-**Status:** Complete · not yet committed
+**Status:** Complete · committed as `32a3688 feat: add 2016 census profile metrics`
 
 ## Goal
 

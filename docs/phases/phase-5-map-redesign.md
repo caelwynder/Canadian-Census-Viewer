@@ -1,6 +1,6 @@
 # Phase 5 — Map Redesign (Concept F + Concept C)
 
-**Status:** Complete · not yet committed
+**Status:** Complete · committed as `9c2768c fix: decode census division names as Latin-1` and `d738ab0 feat: redesign map with dot density view and division profiles`
 
 ## Goal
 
