@@ -4,15 +4,15 @@
   var DOT_STYLE = { weight: 0.6, opacity: 1, fillOpacity: 1 };
   var PER_DOT = 1000;
   var DRAWER_WIDTH = 440;
-  var CONTROL_WIDTH = 400;
+  var TOP_BAR = 80;
   var NARROW = 700;
   var VIEWS = ["map", "dots"];
   var ATTRIBUTION = "Boundaries &copy; Statistics Canada";
   var COUNT = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 0 });
 
   function showError(message) {
-    document.getElementById("headline").textContent = "Something went wrong";
-    document.getElementById("intro").replaceChildren(ui.el("span", "error", message));
+    document.getElementById("legend-title").textContent = "Something went wrong";
+    document.getElementById("legend").replaceChildren(ui.el("p", "error", message));
   }
 
   function themeColor(name) {
@@ -122,7 +122,7 @@
       },
     }).addTo(map);
     var dotLayer = CV.dotLayer([], [], { pane: "dots" });
-    map.fitBounds(divisions.getBounds(), { paddingTopLeft: [window.innerWidth > NARROW ? CONTROL_WIDTH : 0, 0] });
+    map.fitBounds(divisions.getBounds(), { paddingTopLeft: [0, TOP_BAR] });
 
     function layerFor(cduid) {
       return divisions.getLayers().find(function (l) { return l.feature.properties.cduid === cduid; });
@@ -187,32 +187,38 @@
 
     function renderHeadline() {
       var headline = document.getElementById("headline");
-      var intro = document.getElementById("intro");
+      var title = document.getElementById("legend-title");
+      var tip = document.getElementById("legend-tip");
       if (state.view === "map") {
         headline.textContent = state.metric.label;
-        intro.textContent = region.title + " census divisions, " + year() + ". Hover for figures; click a division for its profile.";
+        title.textContent = state.metric.label + " · " + year();
+        tip.textContent = region.title + " census divisions. Hover a division for its value; click it for a profile.";
         return;
       }
       var scheme = state.scheme;
-      var total = regionRows.reduce(function (sum, r) { return sum + (scheme.total(r, year()) || 0); }, 0);
       var who = scheme.unit === "people" ? region.people : region.title + " households";
-      headline.textContent = ui.millions(total) + " " + who + ", by " + scheme.label.toLowerCase();
-      intro.textContent = "One dot = " + COUNT.format(PER_DOT) + " " + scheme.unit + ", placed at random inside its census division and coloured by " +
-        scheme.label.toLowerCase() + ". " + COUNT.format(dotsFor(scheme, year()).length) + " dots in this view. Dots show how many, not exactly where within a division.";
+      headline.textContent = ui.millions(dotTotal()) + " " + who + ", by " + scheme.label.toLowerCase();
+      title.textContent = scheme.label;
+      tip.textContent = "Dots are placed at random inside each census division, so they show how many, not exactly where. " +
+        COUNT.format(dotsFor(scheme, year()).length) + " dots in this view.";
+    }
+
+    function dotTotal() {
+      return regionRows.reduce(function (sum, r) { return sum + (state.scheme.total(r, year()) || 0); }, 0);
     }
 
     function renderControls() {
       var isDots = state.view === "dots";
-      document.getElementById("map-controls").hidden = isDots;
-      document.getElementById("dot-controls").hidden = !isDots;
+      var legend = document.getElementById("legend");
+      document.getElementById("metric").hidden = isDots;
+      document.getElementById("scheme").hidden = !isDots;
       ui.renderViewToggle(document.getElementById("view-toggle"), state.view, function (view) { state.view = view; render(); });
       ui.renderTimeline(document.getElementById("timeline"), activeYears(), year(), function (y) { state.year = y; render(); });
       if (isDots) {
-        ui.renderDotLegend(document.getElementById("dot-legend"), state.scheme);
-        ui.renderChips(document.getElementById("chips"), state.scheme, function (s) { state.scheme = s; render(); });
+        ui.renderDotLegend(legend, state.scheme, "1 dot = " + COUNT.format(PER_DOT) + " " + state.scheme.unit + " · " + ui.millions(dotTotal()) + " total");
         return;
       }
-      ui.renderLegend(document.getElementById("legend"), state.metric, year(), scale);
+      ui.renderLegend(legend, state.metric, scale);
     }
 
     function queryString(regionId) {
@@ -246,14 +252,11 @@
     document.title = region.title + " · Canadian Census Viewer";
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && state.pinned) closeDrawer(); });
     ui.renderMetricPicker(document.getElementById("metric"), state.metric, function (metric) { state.metric = metric; render(); });
+    ui.bindInfo(document.getElementById("legend-info"));
+    ui.renderSchemePicker(document.getElementById("scheme"), state.scheme, function (scheme) { state.scheme = scheme; render(); });
     ui.renderRegionSelect(document.getElementById("region"), CV.regions.list, region.id, function (id) { location.search = queryString(id); });
     ui.renderSearch(document.getElementById("search"), document.getElementById("search-list"), ui.searchOptions(features.features, !region.pruids), function (cduid) {
       select(cduid, true, true);
-    });
-    document.getElementById("collapse").addEventListener("click", function (e) {
-      var collapsed = document.body.classList.toggle("collapsed");
-      e.currentTarget.setAttribute("aria-expanded", String(!collapsed));
-      e.currentTarget.textContent = collapsed ? "Show controls" : "Hide controls";
     });
     render();
     if (state.pinned) select(state.pinned, true);

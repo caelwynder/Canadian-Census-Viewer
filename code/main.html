@@ -7,7 +7,7 @@
     <meta name="description" content="Explore Canada's 2016 census division by division: population, age, income, housing, language, immigration, education and commuting.">
     <script>try { var t = localStorage.getItem("cv-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Tajawal:wght@700&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/tokens.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,31 +25,31 @@
         .error { color: var(--down); }
         :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-        .page { max-width: 1160px; margin: 0 auto; padding: 24px 24px 48px; }
+        .page { max-width: 1160px; margin: 0 auto; padding: 0 24px 48px; }
 
-        .top { display: flex; justify-content: space-between; align-items: center; }
-        .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
-        .logo-mark {
-            display: grid;
-            place-items: center;
-            width: 26px;
-            height: 26px;
-            border-radius: 7px;
-            background: var(--accent);
-            color: #1a0d05;
-            font-size: 13px;
-            font-weight: 700;
+        .hero {
+            position: relative;
+            height: 100vh;
+            height: 100svh;
+            min-height: 560px;
+            max-height: 1100px;
+            overflow: hidden;
+            background: #000;
+            color: #e8eaee;
         }
-        .icon-button {
-            width: 38px;
-            height: 38px;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            background: var(--raised);
-            font-size: 18px;
+        .hero-photo {
+            position: absolute;
+            z-index: 0;
+            inset: 0 -6.25% 0 18.75%;
+            background: url("img/hero-earth-night.webp") 30% center / cover no-repeat;
         }
+        .hero::before,
+        .hero::after { content: ""; position: absolute; z-index: 1; left: 0; right: 0; pointer-events: none; }
+        .hero::before { top: 0; bottom: 0; background: linear-gradient(90deg, #000 22%, transparent 50%); }
+        .hero::after { bottom: 0; height: 220px; background: linear-gradient(transparent, var(--bg)); }
+        .hero > :not(.hero-photo) { position: absolute; z-index: 2; }
 
-        .hero { max-width: 760px; padding: 72px 0 48px; }
+        .hero-title { top: 32px; left: 40px; }
         .eyebrow {
             display: block;
             margin-bottom: 10px;
@@ -59,19 +59,58 @@
             text-transform: uppercase;
             color: var(--muted);
         }
-        h1 { font: 700 clamp(34px, 6vw, 56px)/1.05 "Space Grotesk", Inter, sans-serif; letter-spacing: -.02em; }
-        .lede { margin-top: 18px; max-width: 60ch; font-size: 17px; color: var(--muted); }
-        .search-row { margin-top: 28px; max-width: 520px; }
+        .hero-title .eyebrow { margin-bottom: 2px; letter-spacing: .14em; color: #f97a3c; }
+        h1 { font: 700 40px/1.1 Tajawal, Inter, sans-serif; }
+
+        .theme-button {
+            top: 22px;
+            right: 25px;
+            width: 52px;
+            height: 52px;
+            border: 1px solid #2a2f3a;
+            border-radius: 50%;
+            background: rgba(15, 18, 23, .7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            font-size: 17px;
+        }
+        .theme-button:hover { border-color: #f97a3c; }
+
+        .search-row { left: 40px; bottom: 80px; width: min(440px, calc(100% - 80px)); }
         .search {
             width: 100%;
-            padding: 13px 16px;
+            padding: 9px 14px;
             font: inherit;
+            font-size: 14px;
             color: var(--text);
             background: var(--raised);
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: 8px;
         }
         .search::placeholder { color: var(--muted); }
+        .hero .search { color: #e8eaee; background: #1b1f27; border-color: #2a2f3a; }
+        .hero .search::placeholder { color: #9aa1ad; }
+
+        .scroll-cue {
+            left: 40px;
+            bottom: 36px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 28px;
+            padding-left: 10px;
+            border-left: 1px solid var(--muted);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: .04em;
+            color: var(--muted);
+            text-decoration: none;
+        }
+        .scroll-cue:hover { color: var(--text); }
+
+        .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+        #views-section { padding-top: 64px; scroll-margin-top: 0; }
 
         h2 { font: 700 22px "Space Grotesk", Inter, sans-serif; margin-bottom: 16px; }
 
@@ -106,30 +145,39 @@
 
         footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 
-        @media (prefers-reduced-motion: reduce) { .view-card { transition: none; } .view-card:hover { transform: none; } }
-        @media (max-width: 700px) { .page { padding: 16px 16px 32px; } .hero { padding: 40px 0 32px; } }
+        html { scroll-behavior: smooth; }
+        @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .view-card { transition: none; } .view-card:hover { transform: none; } }
+        @media (max-width: 700px) {
+            .page { padding: 0 16px 32px; }
+            .hero-photo { inset: 0 -40% 0 0; }
+            .hero::before { background: linear-gradient(90deg, rgba(0, 0, 0, .85), transparent 75%); }
+            .hero-title { top: 20px; left: 16px; right: 84px; }
+            h1 { font-size: 30px; }
+            .theme-button { top: 16px; right: 16px; width: 44px; height: 44px; }
+            .search-row { left: 16px; width: calc(100% - 32px); }
+            .scroll-cue { left: 16px; }
+        }
     </style>
 </head>
 <body>
+    <header class="hero">
+        <div class="hero-photo" role="img" aria-label="Canada from orbit at night, city lights along the southern border"></div>
+        <div class="hero-title">
+            <span class="eyebrow">Statistics Canada · 2016 Census</span>
+            <h1>Canadian Census Viewer</h1>
+        </div>
+        <button class="theme-button" id="theme" type="button" aria-label="Switch between dark and light theme">◐</button>
+        <div class="search-row">
+            <label class="visually-hidden" for="search">Find a census division</label>
+            <input class="search" id="search" list="search-list" placeholder="Type a name, e.g. Toronto" autocomplete="off">
+            <datalist id="search-list"></datalist>
+        </div>
+        <a class="scroll-cue" href="#views-section">Scroll to explore the views ↓</a>
+    </header>
+
     <div class="page">
-        <header class="top">
-            <a class="logo" href="main.html"><span class="logo-mark" aria-hidden="true">C</span>Census Viewer</a>
-            <button class="icon-button" id="theme" type="button" aria-label="Switch between dark and light theme">◐</button>
-        </header>
-
         <main>
-            <section class="hero">
-                <span class="eyebrow">2016 Census · 293 census divisions · 2006–2016</span>
-                <h1>Explore Canada, one census division at a time</h1>
-                <p class="lede">Colour the map by 27 measures of population, age, income, housing, language, immigration, education and commuting, or see where people live as dots. Click any division for a plain-language profile.</p>
-                <div class="search-row">
-                    <label class="eyebrow" for="search">Find a census division</label>
-                    <input class="search" id="search" list="search-list" placeholder="Type a name, e.g. Montréal" autocomplete="off">
-                    <datalist id="search-list"></datalist>
-                </div>
-            </section>
-
-            <section aria-labelledby="views-heading">
+            <section id="views-section" aria-labelledby="views-heading">
                 <h2 id="views-heading">Start with a view</h2>
                 <div class="views" id="views"></div>
             </section>
@@ -142,7 +190,6 @@
 
         <footer>
             Source: Statistics Canada, 2016 Census (Age and Sex Highlight Tables; Census Profile) and cartographic boundary files. Open Government Licence – Canada.
-            Works straight from disk: open <b>main.html</b> in a browser.
             · <a href="https://github.com/caelwynder/Canadian-Census-Viewer">GitHub</a>
         </footer>
     </div>

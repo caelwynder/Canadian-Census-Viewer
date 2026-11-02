@@ -20,22 +20,50 @@
     return n >= 1e6 ? (n / 1e6).toFixed(1) + " million" : COUNT.format(n);
   }
 
-  function legendRow(color, label, className) {
-    var row = el("div", className || "legend-row");
-    var swatch = el("span", "legend-swatch");
-    swatch.style.background = color;
-    row.append(swatch, el("span", null, label));
-    return row;
+  function swatch(className, color, title) {
+    var node = el("span", className);
+    node.style.background = color;
+    node.title = title;
+    return node;
   }
 
-  function renderLegend(container, metric, year, scale) {
-    var labels = CV.breaks.labels(scale.thresholds, function (n) { return CV.format.value(n, metric.unit); });
-    var rows = scale.colors.map(function (color, i) { return legendRow(color, labels[i]); });
-    container.replaceChildren(el("h2", "eyebrow", "Legend · " + year), ...rows, legendRow(CV.breaks.NO_DATA_COLOR, "No data"));
+  function stripEnds(thresholds, formatValue) {
+    if (!thresholds.length) return { low: "All values", high: "" };
+    return { low: "<" + formatValue(thresholds[0]), high: formatValue(thresholds[thresholds.length - 1]) + "+" };
   }
 
-  function renderDotLegend(container, scheme) {
-    container.replaceChildren(...scheme.categories.map(function (c) { return legendRow(c.color, c.label, "legend-row dot-row"); }));
+  function renderLegend(container, metric, scale) {
+    var formatValue = function (n) { return CV.format.value(n, metric.unit); };
+    var labels = CV.breaks.labels(scale.thresholds, formatValue);
+    var strip = el("div", "strip");
+    strip.setAttribute("role", "img");
+    strip.setAttribute("aria-label", labels.join("; "));
+    strip.append(...scale.colors.map(function (color, i) { return swatch(null, color, labels[i]); }));
+    var row = el("div", "strip-row");
+    row.append(strip, swatch("strip-nodata", CV.breaks.NO_DATA_COLOR, "No data"));
+    var ends = stripEnds(scale.thresholds, formatValue);
+    var endLabels = el("div", "strip-ends mono");
+    endLabels.append(el("span", null, ends.low), el("span", null, ends.high));
+    container.replaceChildren(row, endLabels);
+  }
+
+  function renderDotLegend(container, scheme, note) {
+    var key = el("div", "dot-key");
+    key.append(...scheme.categories.map(function (c) {
+      var item = el("span");
+      var dot = el("i");
+      dot.style.background = c.color;
+      item.append(dot, document.createTextNode(c.label));
+      return item;
+    }));
+    container.replaceChildren(key, el("p", "dot-note", note));
+  }
+
+  function bindInfo(button) {
+    function setOpen(open) { button.setAttribute("aria-expanded", String(open)); }
+    button.addEventListener("click", function () { setOpen(button.getAttribute("aria-expanded") !== "true"); });
+    document.addEventListener("click", function (e) { if (e.target !== button) setOpen(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setOpen(false); });
   }
 
   function renderMetricPicker(select, activeMetric, onChange) {
@@ -54,16 +82,20 @@
     select.addEventListener("change", function () { onChange(CV.metrics.byId(select.value)); });
   }
 
-  function renderChips(container, active, onChange) {
-    container.replaceChildren(...CV.dots.SCHEMES.map(function (s) {
-      return toggleButton(s.label, s.id === active.id, function () { onChange(s); }, "chip");
+  function renderSchemePicker(select, active, onChange) {
+    select.replaceChildren(...CV.dots.SCHEMES.map(function (scheme) {
+      var option = el("option", null, "Colour by: " + scheme.label);
+      option.value = scheme.id;
+      option.selected = scheme.id === active.id;
+      return option;
     }));
+    select.addEventListener("change", function () { onChange(CV.dots.schemeById(select.value)); });
   }
 
   function renderViewToggle(container, view, onChange) {
     container.replaceChildren(
-      toggleButton("Choropleth", view === "map", function () { onChange("map"); }, "segment"),
-      toggleButton("Dot density", view === "dots", function () { onChange("dots"); }, "segment")
+      toggleButton("Map", view === "map", function () { onChange("map"); }, "segment"),
+      toggleButton("Dots", view === "dots", function () { onChange("dots"); }, "segment")
     );
   }
 
@@ -143,11 +175,12 @@
     el: el,
     toggleButton: toggleButton,
     millions: millions,
-    legendRow: legendRow,
+    stripEnds: stripEnds,
     renderLegend: renderLegend,
     renderDotLegend: renderDotLegend,
+    bindInfo: bindInfo,
     renderMetricPicker: renderMetricPicker,
-    renderChips: renderChips,
+    renderSchemePicker: renderSchemePicker,
     renderViewToggle: renderViewToggle,
     renderTimeline: renderTimeline,
   };

@@ -46,22 +46,24 @@ test("choropleth recolours when the metric changes", async ({ page: p }) => {
 
 test("dot density toggles on and switches colour scheme", async ({ page: p }) => {
   await p.goto(page("map.html", "?region=ontario"));
-  await p.getByRole("button", { name: "Dot density" }).click();
+  await p.getByRole("button", { name: "Dots" }).click();
   await expect(p.locator("#headline")).toHaveText("13.4 million Ontarians, by age");
+  await expect(p.locator("#legend")).toContainText("1 dot = 1,000 people");
   await expect(p.locator("canvas.dot-layer")).toHaveCount(1);
-  await p.getByRole("button", { name: "Tenure" }).click();
+  await p.selectOption("#scheme", "tenure");
   await expect(p.locator("#headline")).toHaveText(/Ontario households, by tenure/);
   await expect(p).toHaveURL(/view=dots.*dots=tenure/);
-  await p.getByRole("button", { name: "Choropleth" }).click();
+  await p.getByRole("button", { name: "Map" }).click();
   await expect(p.locator("canvas.dot-layer")).toHaveCount(0);
 });
 
 test("clicking a division opens its profile and Escape closes it", async ({ page: p }) => {
   await p.goto(page("map.html", "?region=ontario"));
   await expect(p.locator("#drawer")).toBeHidden();
-  await p.mouse.click(900, 300);
+  await p.mouse.click(640, 300);
   await expect(p.locator("#drawer")).toBeVisible();
-  await expect(p.locator(".summary")).toContainText("census divisions in Ontario");
+  await expect(p.locator(".summary")).toHaveCount(0);
+  await expect(p.locator("#drawer .box").first()).toContainText("Growth since 2006");
   await expect(p.locator(".place-name")).toBeFocused();
   await p.keyboard.press("Escape");
   await expect(p.locator("#drawer")).toBeHidden();
@@ -84,6 +86,19 @@ test("region menu loads a province", async ({ page: p }) => {
   await expect(p.locator(".leaflet-interactive")).toHaveCount(98);
 });
 
+test("legend info button opens and closes its tip", async ({ page: p }) => {
+  await p.goto(page("map.html", "?region=ontario"));
+  const info = p.getByRole("button", { name: "About this view" });
+  await expect(p.locator("#legend-tip")).toBeHidden();
+  await info.click();
+  await expect(p.locator("#legend-tip")).toBeVisible();
+  await expect(p.locator("#legend-tip")).toContainText("Ontario census divisions");
+  await p.mouse.move(640, 300);
+  await expect(p.locator("#legend-tip")).toBeVisible();
+  await p.keyboard.press("Escape");
+  await expect(p.locator("#legend-tip")).toBeHidden();
+});
+
 test("theme toggle is remembered across pages", async ({ page: p }) => {
   await p.goto(page("map.html"));
   await p.getByRole("button", { name: /dark and light theme/ }).click();
@@ -92,10 +107,12 @@ test("theme toggle is remembered across pages", async ({ page: p }) => {
   await expect(p.locator("html")).toHaveAttribute("data-theme", "light");
 });
 
-test("phone layout can hide the controls @phone", async ({ page: p }) => {
+test("phone layout fits the command bar and legend on screen @phone", async ({ page: p }) => {
   await p.goto(page("map.html", "?region=ontario"));
-  const toggle = p.getByRole("button", { name: "Hide controls" });
-  await toggle.click();
-  await expect(p.locator("#view-toggle")).toBeHidden();
-  await expect(p.getByRole("button", { name: "Show controls" })).toHaveAttribute("aria-expanded", "false");
+  const width = p.viewportSize().width;
+  for (const selector of [".commandbar", ".legend-card"]) {
+    const box = await p.locator(selector).boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+  }
 });

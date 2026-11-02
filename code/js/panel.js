@@ -34,12 +34,6 @@
     return node;
   }
 
-  function summaryParagraph(segments) {
-    var p = el("p", "summary");
-    segments.forEach(function (s) { p.append(s.strong ? el("strong", null, s.text) : document.createTextNode(s.text)); });
-    return p;
-  }
-
   function card(label, value, note, extra) {
     var node = el("div", "stat");
     node.append(el("span", "stat-label", label), el("span", "stat-value mono", value));
@@ -220,9 +214,8 @@
       heading(ctx.name),
       el("p", "muted", "Census division " + ctx.row.cduid + " · " + ctx.year + " Census"),
       compareBanner(ctx),
-      summaryParagraph(CV.profile.summary(ctx.row, ctx.rows, ctx.regionName, ctx.year)),
-      cards(ctx),
       growthChart(ctx),
+      cards(ctx),
       ageBars(ctx),
       ...CV.metrics.themes().map(function (group) { return themeSection(group, ctx); }),
       similarList(ctx)
