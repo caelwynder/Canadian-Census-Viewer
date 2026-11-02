@@ -45,6 +45,7 @@
       year: Number(params.get("year")) || CV.metrics.YEARS[CV.metrics.YEARS.length - 1],
       pinned: params.get("cd"),
       vs: params.get("vs"),
+      baseline: params.get("baseline") === "canada",
     };
   }
 
@@ -58,12 +59,26 @@
     var features = CV.regions.select(CENSUS.boundaries, region);
     var regionRows = features.features.map(function (f) { return rows[f.properties.cduid]; }).filter(Boolean);
     var regionTotals = CV.profile.aggregate(regionRows);
+    var national = CV.profile.nationalRow(Object.values(rows), CENSUS.canada2016 || {});
     var state = readState(new URLSearchParams(location.search));
     var drawer = document.getElementById("drawer");
     var dotCache = {};
     var scale = metricScale();
 
+    function versusCanada() {
+      return state.baseline && state.metric.national !== false;
+    }
+
+    function shownValue(row, y) {
+      var value = row ? state.metric.value(row, y) : null;
+      return versusCanada() ? CV.metrics.gap(state.metric, value, state.metric.value(national, y)) : value;
+    }
+
     function metricScale() {
+      if (versusCanada()) {
+        var gaps = state.metric.years.flatMap(function (y) { return regionRows.map(function (r) { return shownValue(r, y); }); });
+        return CV.breaks.diverging(gaps, CV.metrics.ramp(state.metric));
+      }
       return CV.breaks.scale(state.metric, CV.metrics.allValues(state.metric, regionRows), CV.metrics.SEQUENTIAL);
     }
 
@@ -89,8 +104,7 @@
     function style(feature) {
       var highlight = outline(feature.properties.cduid);
       if (state.view === "dots") return Object.assign({}, DOT_STYLE, { color: themeColor("--edge"), fillColor: themeColor("--land") }, highlight);
-      var row = rowFor(feature);
-      var fill = scale.colorFor(row ? state.metric.value(row, year()) : null);
+      var fill = scale.colorFor(shownValue(rowFor(feature), year()));
       return Object.assign({}, MAP_STYLE, { color: themeColor("--bg"), fillColor: fill }, highlight);
     }
 
@@ -99,6 +113,7 @@
       var value = state.view === "dots"
         ? CV.format.value(row && row["total_" + year()], "count") + " people"
         : CV.format.value(row ? state.metric.value(row, year()) : null, state.metric.unit);
+      if (state.view === "map" && versusCanada()) value += " · " + CV.format.value(shownValue(row, year()), CV.metrics.gapUnit(state.metric)) + " vs Canada";
       var tip = ui.el("div");
       tip.append(ui.el("strong", null, layer.feature.properties.name), ui.el("span", null, value));
       return tip;
@@ -192,7 +207,7 @@
       if (state.view === "map") {
         headline.textContent = state.metric.label;
         title.textContent = state.metric.label + " · " + year();
-        tip.textContent = region.title + " census divisions. Hover a division for its value; click it for a profile.";
+        tip.textContent = mapTip();
         return;
       }
       var scheme = state.scheme;
@@ -203,6 +218,18 @@
         COUNT.format(dotsFor(scheme, year()).length) + " dots in this view.";
     }
 
+    function mapTip() {
+      var hint = " Hover a division for its value; click it for a profile.";
+      var metric = state.metric;
+      if (versusCanada()) {
+        var colours = metric.better ? "Green is better than Canada, red is worse." : "Green is above Canada, red is below.";
+        return "Compared with Canada's " + CV.format.value(metric.value(national, year()), metric.unit) + ". " + colours + hint;
+      }
+      if (metric.id === "change") return "Centred on no change: green grew, red shrank." + hint;
+      if (metric.id === "sex_ratio") return "Centred on 100, an even split: green has more men, red more women." + hint;
+      return region.title + " census divisions." + hint;
+    }
+
     function dotTotal() {
       return regionRows.reduce(function (sum, r) { return sum + (state.scheme.total(r, year()) || 0); }, 0);
     }
@@ -210,6 +237,9 @@
     function renderControls() {
       var isDots = state.view === "dots";
       var legend = document.getElementById("legend");
+      var baseline = document.getElementById("baseline");
+      baseline.hidden = isDots || state.metric.national === false;
+      ui.renderBaselineToggle(baseline, state.baseline, function (on) { state.baseline = on; render(); });
       document.getElementById("metric").hidden = isDots;
       document.getElementById("scheme").hidden = !isDots;
       ui.renderViewToggle(document.getElementById("view-toggle"), state.view, function (view) { state.view = view; render(); });
@@ -218,11 +248,15 @@
         ui.renderDotLegend(legend, state.scheme, "1 dot = " + COUNT.format(PER_DOT) + " " + state.scheme.unit + " · " + ui.millions(dotTotal()) + " total");
         return;
       }
-      ui.renderLegend(legend, state.metric, scale);
+      if (versusCanada()) {
+        ui.renderLegend(legend, scale, CV.metrics.gapUnit(state.metric), { low: "Below Canada", high: "Above Canada" });
+        return;
+      }
+      ui.renderLegend(legend, scale, state.metric.unit);
     }
 
     function queryString(regionId) {
-      var query = "?region=" + regionId + "&view=" + state.view + "&metric=" + state.metric.id + "&dots=" + state.scheme.id + "&year=" + year();
+      var query = "?region=" + regionId + "&view=" + state.view + "&metric=" + state.metric.id + "&dots=" + state.scheme.id + "&year=" + year() + (state.baseline ? "&baseline=canada" : "");
       if (regionId !== region.id || !state.pinned) return query;
       return query + "&cd=" + state.pinned + (state.vs ? "&vs=" + state.vs : "");
     }

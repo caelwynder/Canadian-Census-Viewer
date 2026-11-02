@@ -138,3 +138,31 @@ test("themes groups metrics in registry order", () => {
   ]);
   assert.ok(themes[0].metrics.includes("population"));
 });
+
+test("gap compares percentages in points and everything else in percent", () => {
+  assert.equal(metrics.gap(metrics.byId("unemployment"), 8.2, 7.7).toFixed(1), "0.5");
+  assert.equal(metrics.gapUnit(metrics.byId("unemployment")), "points");
+  assert.equal(metrics.gap(metrics.byId("household_income"), 65829, 70336).toFixed(1), "-6.4");
+  assert.equal(metrics.gapUnit(metrics.byId("household_income")), "change");
+  assert.equal(metrics.gap(metrics.byId("rent"), null, 910), null);
+});
+
+test("raw counts are not compared with Canada", () => {
+  assert.equal(metrics.byId("population").national, false);
+  assert.ok(metrics.list.filter((m) => m.national !== false).length >= 26);
+});
+
+test("ramps run red to green, flipped when lower is better", () => {
+  const up = metrics.ramp(metrics.byId("household_income"));
+  const down = metrics.ramp(metrics.byId("unemployment"));
+  assert.equal(up[0], metrics.DIVERGING[0]);
+  assert.equal(down[0], metrics.DIVERGING[metrics.DIVERGING.length - 1]);
+});
+
+test("metrics centred on a balance point use the diverging colours", () => {
+  for (const id of ["change", "sex_ratio"]) {
+    const m = metrics.byId(id);
+    assert.ok(m.colors.every((c) => metrics.DIVERGING.includes(c)), id);
+  }
+});
+

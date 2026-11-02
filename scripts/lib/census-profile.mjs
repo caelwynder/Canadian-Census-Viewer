@@ -37,16 +37,17 @@ export const PROFILE_FIELDS = [
   { key: "bicycle", memberId: 1935, name: "Bicycle", of: "commuteTotal" },
 ];
 
-// Census-division rows: GEO_LEVEL 2 with a four-digit CDUID. Checked before parsing
-// because the file has about 12 million lines.
-const CENSUS_DIVISION_LINE = /^2016,"\d{4}","2",/;
+// The Canada row (code 01, GEO_LEVEL 0) and census-division rows (GEO_LEVEL 2, four-digit CDUID).
+// Checked before parsing because the file has about 12 million lines.
+export const CANADA_CODE = "01";
+const WANTED_LINE = /^2016,"(?:01","0|\d{4}","2)",/;
 const COL = { code: 1, characteristic: 8, member: 9, total: 11 };
 
 export async function extractProfile(lines, fields) {
   const byMember = new Map(fields.map((f) => [f.memberId, f]));
   const profile = {};
   for await (const line of lines) {
-    if (!CENSUS_DIVISION_LINE.test(line)) continue;
+    if (!WANTED_LINE.test(line)) continue;
     const cols = parseCsvLine(line);
     const field = byMember.get(Number(cols[COL.member]));
     if (!field) continue;

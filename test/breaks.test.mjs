@@ -64,3 +64,18 @@ test("scale colours missing values with the no-data colour", () => {
   const scale = breaks.scale({}, [1, 2], ["lo", "hi"]);
   assert.equal(scale.colorFor(null), breaks.NO_DATA_COLOR);
 });
+
+test("diverging splits classes symmetrically around zero by size of gap", () => {
+  const ramp = ["r3", "r2", "r1", "mid", "g1", "g2", "g3"];
+  const scale = breaks.diverging([-8, -4, -2, -1, 1, 2, 4, 8], ramp);
+  assert.deepEqual(plain(scale.thresholds), [-4, -2, -1, 1, 2, 4]);
+  assert.equal(scale.colorFor(0), "mid");
+  assert.equal(scale.colorFor(-8), "r3");
+  assert.equal(scale.colorFor(3), "g2");
+});
+
+test("diverging keeps the neutral colour in the middle when there are few distinct gaps", () => {
+  const scale = breaks.diverging([-2, 2, 2, -2], ["r3", "r2", "r1", "mid", "g1", "g2", "g3"]);
+  assert.deepEqual(plain(scale.thresholds), [-2, 2]);
+  assert.deepEqual(plain(scale.colors), ["r1", "mid", "g1"]);
+});

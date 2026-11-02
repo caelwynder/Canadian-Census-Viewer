@@ -1,5 +1,7 @@
 (function (CV) {
   var SEQUENTIAL = ["#440154", "#443983", "#31688e", "#21918c", "#35b779", "#90d743", "#fde725"];
+  // ColorBrewer RdYlGn, red (low) to green (high).
+  var DIVERGING = ["#d73027", "#fc8d59", "#fee08b", "#ffffbf", "#d9ef8b", "#91cf60", "#1a9850"];
   var YEARS = [2006, 2011, 2016];
   var PROFILE_YEARS = [2016];
   var CENSUS_INTERVAL = 5;
@@ -51,16 +53,21 @@
     return Object.assign({}, metric, { additive: false });
   }
 
+  function better(direction, metric) {
+    return Object.assign({}, metric, { better: direction });
+  }
+
   var list = [
-    { id: "population", label: "Population", theme: "Population", unit: "count", years: YEARS, value: count("total") },
+    { id: "population", label: "Population", theme: "Population", unit: "count", years: YEARS, national: false, value: count("total") },
     {
       id: "change",
       label: "Population change over 5 years",
       theme: "Population",
       unit: "change",
       years: [2011, 2016],
+      better: "higher",
       breaks: [-5, -1, 1, 5, 10],
-      colors: ["#2166ac", "#67a9cf", "#8c8f96", "#fdb863", "#e66101", "#b2182b"],
+      colors: [DIVERGING[0], DIVERGING[1], DIVERGING[3], DIVERGING[4], DIVERGING[5], DIVERGING[6]],
       value: function (row, year) { return change(row["total_" + year], row["total_" + (year - CENSUS_INTERVAL)]); },
     },
     {
@@ -90,25 +97,25 @@
       theme: "Sex",
       unit: "ratio",
       years: YEARS,
-      breaks: [95, 98, 100, 102, 105],
-      colors: ["#762a83", "#9970ab", "#c2a5cf", "#a6dba0", "#5aae61", "#1b7837"],
+      breaks: [95, 98, 102, 105],
+      colors: [DIVERGING[0], DIVERGING[1], DIVERGING[3], DIVERGING[5], DIVERGING[6]],
       value: function (row, year) { return per100(row["m_total_" + year], row["f_total_" + year]); },
     },
-    notAdditive(profile("household_income", "Median household income (income year 2015)", "Income", "currency", field("householdIncome"))),
-    notAdditive(profile("low_income", "Low-income rate (LIM-AT)", "Income", "percent", field("lowIncomeRate"))),
+    better("higher", notAdditive(profile("household_income", "Median household income (income year 2015)", "Income", "currency", field("householdIncome")))),
+    better("lower", notAdditive(profile("low_income", "Low-income rate (LIM-AT)", "Income", "percent", field("lowIncomeRate")))),
     profile("renters", "Households that rent", "Housing", "percent", ofTotal(["renters"], "tenureTotal")),
-    profile("shelter_30", "Households spending 30%+ of income on shelter", "Housing", "percent", ofTotal(["shelterCost30"], "shelterCostTotal")),
-    notAdditive(profile("owner_cost", "Median monthly shelter cost, owners", "Housing", "currency", field("ownerShelterCost"))),
-    notAdditive(profile("rent", "Median monthly shelter cost, renters", "Housing", "currency", field("renterShelterCost"))),
+    better("lower", profile("shelter_30", "Households spending 30%+ of income on shelter", "Housing", "percent", ofTotal(["shelterCost30"], "shelterCostTotal"))),
+    better("lower", notAdditive(profile("owner_cost", "Median monthly shelter cost, owners", "Housing", "currency", field("ownerShelterCost")))),
+    better("lower", notAdditive(profile("rent", "Median monthly shelter cost, renters", "Housing", "currency", field("renterShelterCost")))),
     profile("immigrants", "Immigrants", "Immigration & diversity", "percent", ofTotal(["immigrants"], "immigrantTotal")),
     profile("visible_minority", "Visible minority", "Immigration & diversity", "percent", ofTotal(["visibleMinority"], "visibleMinorityTotal")),
     profile("indigenous", "Indigenous identity", "Immigration & diversity", "percent", ofTotal(["indigenous"], "indigenousTotal")),
     profile("mother_tongue_en", "Mother tongue English", "Language", "percent", ofTotal(["motherTongueEnglish"], "motherTongueTotal")),
     profile("mother_tongue_fr", "Mother tongue French", "Language", "percent", ofTotal(["motherTongueFrench"], "motherTongueTotal")),
     profile("bilingual", "Speaks English and French", "Language", "percent", ofTotal(["bilingual"], "officialLanguageTotal")),
-    profile("bachelor", "Bachelor's degree or higher (aged 25–64)", "Education & work", "percent", ofTotal(["bachelorPlus"], "educationTotal")),
-    notAdditive(profile("participation", "Labour force participation rate", "Education & work", "percent", field("participationRate"))),
-    notAdditive(profile("unemployment", "Unemployment rate", "Education & work", "percent", field("unemploymentRate"))),
+    better("higher", profile("bachelor", "Bachelor's degree or higher (aged 25–64)", "Education & work", "percent", ofTotal(["bachelorPlus"], "educationTotal"))),
+    better("higher", notAdditive(profile("participation", "Labour force participation rate", "Education & work", "percent", field("participationRate")))),
+    better("lower", notAdditive(profile("unemployment", "Unemployment rate", "Education & work", "percent", field("unemploymentRate")))),
     profile("transit", "Commute by public transit", "Commute", "percent", ofTotal(["transit"], "commuteTotal")),
     profile("active_commute", "Commute by walking or cycling", "Commute", "percent", ofTotal(["walked", "bicycle"], "commuteTotal")),
   ];
@@ -127,6 +134,21 @@
     });
   }
 
+  function gapUnit(metric) {
+    return metric.unit === "percent" || metric.unit === "change" ? "points" : "change";
+  }
+
+  // How far a value sits from Canada's: percentage points for rates, percent difference otherwise.
+  function gap(metric, value, national) {
+    if (isMissing(value) || isMissing(national)) return null;
+    if (gapUnit(metric) === "points") return value - national;
+    return national ? (value / national - 1) * 100 : null;
+  }
+
+  function ramp(metric) {
+    return metric.better === "lower" ? DIVERGING.slice().reverse() : DIVERGING;
+  }
+
   function themes() {
     return list.reduce(function (groups, m) {
       var last = groups[groups.length - 1];
@@ -135,5 +157,5 @@
     }, []);
   }
 
-  CV.metrics = { SEQUENTIAL: SEQUENTIAL, YEARS: YEARS, DEFAULT_ID: DEFAULT_ID, list: list, byId: byId, yearFor: yearFor, allValues: allValues, themes: themes };
+  CV.metrics = { SEQUENTIAL: SEQUENTIAL, DIVERGING: DIVERGING, gap: gap, gapUnit: gapUnit, ramp: ramp, YEARS: YEARS, DEFAULT_ID: DEFAULT_ID, list: list, byId: byId, yearFor: yearFor, allValues: allValues, themes: themes };
 })(window.CensusViewer = window.CensusViewer || {});

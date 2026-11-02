@@ -70,3 +70,9 @@ test("joinRows merges both tables per division and adds its code", () => {
   const rows = profile.joinRows({ 3520: { name: "Toronto", total_2016: 5 } }, { 3520: { landArea: 2 } });
   assert.deepEqual(plain(rows), { 3520: { cduid: "3520", name: "Toronto", total_2016: 5, landArea: 2 } });
 });
+
+test("nationalRow joins StatCan's Canada figures onto summed division counts", () => {
+  const canada = profile.nationalRow(rows, { householdIncome: 70336 });
+  assert.equal(canada.total_2016, 1600);
+  assert.equal(canada.householdIncome, 70336);
+});

@@ -62,6 +62,13 @@ test("Toronto carries the census profile fields behind the Phase 4 metrics", { s
   assert.equal(toronto.population, undefined, "cross-check fields are not published");
 });
 
+test("the Canada row carries StatCan's national figures", { skip: !built && "run npm run data:build first" }, () => {
+  const { canada2016 } = loadCensus();
+  assert.equal(canada2016.householdIncome, 70336);
+  assert.equal(canada2016.unemploymentRate, 7.7);
+  assert.equal(canada2016.population, undefined, "cross-check fields are not published");
+});
+
 test("profile gaps are limited to the ones StatCan publishes", { skip: !built && "run npm run data:build first" }, () => {
   const rows = Object.entries(loadCensus().profile2016);
   const lowIncomeMissing = rows.filter(([, p]) => p.lowIncomeRate === null).map(([id]) => id);

@@ -34,6 +34,11 @@ test("formats years to one decimal place", () => {
   assert.equal(format.value(39.3, "years"), "39.3 years");
 });
 
+test("formats percentage-point gaps with an explicit sign", () => {
+  assert.equal(format.value(4.26, "points"), "+4.3 pts");
+  assert.equal(format.value(-0.04, "points"), "0.0 pts");
+});
+
 test("shows missing values as n/a", () => {
   assert.equal(format.value(null, "count"), "n/a");
   assert.equal(format.value(undefined, "percent"), "n/a");

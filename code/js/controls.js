@@ -29,11 +29,11 @@
 
   function stripEnds(thresholds, formatValue) {
     if (!thresholds.length) return { low: "All values", high: "" };
-    return { low: "<" + formatValue(thresholds[0]), high: formatValue(thresholds[thresholds.length - 1]) + "+" };
+    return { low: "<" + formatValue(thresholds[0]), high: "≥" + formatValue(thresholds[thresholds.length - 1]) };
   }
 
-  function renderLegend(container, metric, scale) {
-    var formatValue = function (n) { return CV.format.value(n, metric.unit); };
+  function renderLegend(container, scale, unit, ends) {
+    var formatValue = function (n) { return CV.format.value(n, unit); };
     var labels = CV.breaks.labels(scale.thresholds, formatValue);
     var strip = el("div", "strip");
     strip.setAttribute("role", "img");
@@ -41,7 +41,7 @@
     strip.append(...scale.colors.map(function (color, i) { return swatch(null, color, labels[i]); }));
     var row = el("div", "strip-row");
     row.append(strip, swatch("strip-nodata", CV.breaks.NO_DATA_COLOR, "No data"));
-    var ends = stripEnds(scale.thresholds, formatValue);
+    ends = ends || stripEnds(scale.thresholds, formatValue);
     var endLabels = el("div", "strip-ends mono");
     endLabels.append(el("span", null, ends.low), el("span", null, ends.high));
     container.replaceChildren(row, endLabels);
@@ -96,6 +96,13 @@
     container.replaceChildren(
       toggleButton("Map", view === "map", function () { onChange("map"); }, "segment"),
       toggleButton("Dots", view === "dots", function () { onChange("dots"); }, "segment")
+    );
+  }
+
+  function renderBaselineToggle(container, on, onChange) {
+    container.replaceChildren(
+      toggleButton("Values", !on, function () { onChange(false); }, "segment"),
+      toggleButton("vs Canada", on, function () { onChange(true); }, "segment")
     );
   }
 
@@ -182,6 +189,7 @@
     renderMetricPicker: renderMetricPicker,
     renderSchemePicker: renderSchemePicker,
     renderViewToggle: renderViewToggle,
+    renderBaselineToggle: renderBaselineToggle,
     renderTimeline: renderTimeline,
   };
 })(window.CensusViewer = window.CensusViewer || {});

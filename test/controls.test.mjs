@@ -30,7 +30,7 @@ test("matchOption finds an exact label, ignoring case and spacing", () => {
 
 test("stripEnds labels the low and high ends of the colour strip", () => {
   const format = (n) => n.toLocaleString("en-CA");
-  assert.deepEqual(plain(controls.stripEnds([15130, 46200, 139355], format)), { low: "<15,130", high: "139,355+" });
+  assert.deepEqual(plain(controls.stripEnds([15130, 46200, 139355], format)), { low: "<15,130", high: "≥139,355" });
   assert.deepEqual(plain(controls.stripEnds([], format)), { low: "All values", high: "" });
 });
 

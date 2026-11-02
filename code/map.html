@@ -162,6 +162,9 @@
         }
         .info:hover + .tip, .info[aria-expanded="true"] + .tip { display: block; }
 
+        .baseline { margin-top: 10px; }
+        .baseline .segment { flex: 1; }
+
         .strip-row { display: flex; align-items: center; gap: 8px; }
         .strip { flex: 1; display: flex; gap: 2px; height: 10px; border-radius: 3px; overflow: hidden; }
         .strip span { flex: 1; }
@@ -363,6 +366,7 @@
             <p class="tip" id="legend-tip" role="tooltip"></p>
         </div>
         <div id="legend"></div>
+        <div class="segments baseline" id="baseline" role="group" aria-label="Colour by"></div>
     </section>
 
     <div class="card statusbar">

@@ -57,8 +57,13 @@
     }, {});
   }
 
+  function nationalRow(rows, canada) {
+    return Object.assign(aggregate(rows), canada);
+  }
+
   CV.profile = {
     joinRows: joinRows,
+    nationalRow: nationalRow,
     aggregate: aggregate,
     compare: compare,
     rank: rank,

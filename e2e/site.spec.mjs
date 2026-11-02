@@ -44,6 +44,16 @@ test("choropleth recolours when the metric changes", async ({ page: p }) => {
   await expect(p.locator(".year-button", { hasText: "2006" })).toBeDisabled();
 });
 
+test("vs Canada recolours a metric by its gap from the national figure", async ({ page: p }) => {
+  await p.goto(page("map.html", "?region=ontario&metric=unemployment"));
+  await p.getByRole("button", { name: "vs Canada" }).click();
+  await expect(p).toHaveURL(/baseline=canada/);
+  await expect(p.locator("#legend")).toContainText("Below Canada");
+  await expect(p.locator("#legend-tip")).toContainText("Canada's 7.7%");
+  await p.selectOption("#metric", "population");
+  await expect(p.locator("#baseline")).toBeHidden();
+});
+
 test("dot density toggles on and switches colour scheme", async ({ page: p }) => {
   await p.goto(page("map.html", "?region=ontario"));
   await p.getByRole("button", { name: "Dots" }).click();

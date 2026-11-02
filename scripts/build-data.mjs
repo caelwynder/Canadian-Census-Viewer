@@ -5,7 +5,7 @@ import { readDbf } from "./lib/dbf.mjs";
 import { toAgeSexTable } from "./lib/census-table.mjs";
 import { buildBoundaries } from "./lib/boundaries.mjs";
 import { openZipEntry } from "./lib/zip-entry.mjs";
-import { extractProfile, publishedProfile, PROFILE_FIELDS } from "./lib/census-profile.mjs";
+import { CANADA_CODE, extractProfile, publishedProfile, PROFILE_FIELDS } from "./lib/census-profile.mjs";
 import { checkJoin, checkCanadaTotal, checkProfile, checkShares } from "./lib/validate.mjs";
 import { toJsGlobal } from "./lib/js-global.mjs";
 import { AGE_SEX_DBF, AGE_SEX_OUT, BOUNDARIES_OUT, BOUNDARY_ZIP, PROFILE_OUT, PROFILE_ZIP } from "./paths.mjs";
@@ -25,8 +25,8 @@ function requireInput(file, hint) {
   if (!existsSync(file)) throw new Error(`Missing ${file}. ${hint}`);
 }
 
-function writeOutput(file, note, key, data) {
-  const source = note + toJsGlobal(key, data);
+function writeOutput(file, note, globals) {
+  const source = note + Object.entries(globals).map(([key, data]) => toJsGlobal(key, data)).join("");
   writeFileSync(file, source);
   console.log(`Wrote ${path.relative(process.cwd(), file)} (${(source.length / 1024).toFixed(0)} KB)`);
 }
@@ -43,7 +43,8 @@ async function main() {
 
   const ageSex = toAgeSexTable(readDbf(readFileSync(AGE_SEX_DBF)));
   const boundaries = await buildBoundaries(BOUNDARY_ZIP);
-  const profile = await readProfile();
+  const { [CANADA_CODE]: canada, ...profile } = await readProfile();
+  if (!canada) throw new Error("The census profile has no Canada row");
 
   const problems = [
     ...checkJoin(boundaries, ageSex),
@@ -54,9 +55,12 @@ async function main() {
   ];
   if (problems.length) throw new Error(`Validation failed:\n- ${problems.join("\n- ")}`);
 
-  writeOutput(BOUNDARIES_OUT, SOURCE_NOTE.boundaries, "boundaries", boundaries);
-  writeOutput(AGE_SEX_OUT, SOURCE_NOTE.ageSex, "ageSex2016", ageSex);
-  writeOutput(PROFILE_OUT, SOURCE_NOTE.profile, "profile2016", publishedProfile(profile, PROFILE_FIELDS));
+  writeOutput(BOUNDARIES_OUT, SOURCE_NOTE.boundaries, { boundaries });
+  writeOutput(AGE_SEX_OUT, SOURCE_NOTE.ageSex, { ageSex2016: ageSex });
+  writeOutput(PROFILE_OUT, SOURCE_NOTE.profile, {
+    profile2016: publishedProfile(profile, PROFILE_FIELDS),
+    canada2016: publishedProfile({ canada }, PROFILE_FIELDS).canada,
+  });
   console.log(`${boundaries.features.length} census divisions joined; validation passed.`);
 }
 

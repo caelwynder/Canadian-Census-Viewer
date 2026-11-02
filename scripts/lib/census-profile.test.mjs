@@ -7,6 +7,7 @@ const row = (code, level, name, member, total) =>
 
 const LINES = [
   '"CENSUS_YEAR","GEO_CODE (POR)","GEO_LEVEL"',
+  row("01", "0", "Land area in square kilometres", 7, 8965121.42),
   row("10", "1", "Population, 2016", 1, 519716),
   row("1001", "2", "Population, 2016", 1, 270348),
   row("1001", "2", "Population, 2011", 2, 262410),
@@ -20,9 +21,10 @@ async function* lines(list) {
   yield* list;
 }
 
-test("keeps only census-division rows for the requested members", async () => {
+test("keeps the Canada row and census-division rows for the requested members", async () => {
   const profile = await extractProfile(lines(LINES), PROFILE_FIELDS);
-  assert.deepEqual(Object.keys(profile).sort(), ["1001", "6208"]);
+  assert.deepEqual(Object.keys(profile).sort(), ["01", "1001", "6208"]);
+  assert.deepEqual(profile["01"], { landArea: 8965121.42 });
   assert.deepEqual(profile["1001"], { population: 270348, density: 29.3, landArea: 9220.61 });
 });
 

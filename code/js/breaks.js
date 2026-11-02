@@ -52,5 +52,22 @@
     };
   }
 
-  CV.breaks = { NO_DATA_COLOR: NO_DATA_COLOR, quantile: quantile, classify: classify, pickColors: pickColors, labels: labels, scale: scale };
+  // Gaps from a balance point: classes are cut by size of gap so equal gaps either side share a shade.
+  function diverging(values, ramp) {
+    var sizes = [0].concat(values.filter(isNumber).map(Math.abs));
+    var steps = quantile(sizes, (ramp.length + 1) / 2);
+    var middle = (ramp.length - 1) / 2;
+    var colors = ramp.slice(middle - steps.length, middle + steps.length + 1);
+    return {
+      thresholds: steps.map(function (s) { return -s; }).reverse().concat(steps),
+      colors: colors,
+      colorFor: function (value) {
+        if (!isNumber(value)) return NO_DATA_COLOR;
+        var n = classify(Math.abs(value), steps);
+        return colors[steps.length + (value < 0 ? -n : n)];
+      },
+    };
+  }
+
+  CV.breaks = { NO_DATA_COLOR: NO_DATA_COLOR, quantile: quantile, classify: classify, pickColors: pickColors, labels: labels, scale: scale, diverging: diverging };
 })(window.CensusViewer = window.CensusViewer || {});

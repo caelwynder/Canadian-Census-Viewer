@@ -5,6 +5,7 @@ An interactive map of Canada's 293 census divisions, built from Statistics Canad
 ## What you can do
 
 - **Choropleth map** of 27 measures: population, growth and density; age and sex; income; housing; immigration and diversity; language; education and work; commuting. Age and population measures cover 2006, 2011 and 2016.
+- **vs Canada** colouring: switch any measure (except raw population) to a red-to-green diverging ramp showing how far each division sits above or below Statistics Canada's national figure. Green marks the better side where one exists (lower unemployment, higher income); otherwise green is above Canada. Population change and males per 100 females always use the diverging ramp, centred on no change and on an even split.
 - **Dot density** view: one dot per 1,000 people (or households), coloured by age, mother tongue, immigrant status or tenure.
 - **Division profiles**: click any division for a growth chart, stat cards, age structure and every measure, each compared with its province or with another division.
 - **Search** any division by name, filter to any **province or territory**, switch between **dark and light** themes, and share any view by its URL.
