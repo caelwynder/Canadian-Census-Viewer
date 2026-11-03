@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Canadian Census Viewer</title>
+    <meta name="description" content="Interactive map of Canada's 2016 census divisions: 27 choropleth metrics, dot density, and a profile for every division.">
+    <script>try { var t = localStorage.getItem("cv-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.45 Inter, system-ui, sans-serif;
+        }
+
+        a { color: inherit; }
+        button { font: inherit; color: inherit; cursor: pointer; }
+        .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+        .muted { color: var(--muted); }
+        .error { color: var(--down); }
+        [hidden] { display: none !important; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        #map { position: fixed; inset: 0; background: var(--bg); }
+        .leaflet-container { font: inherit; }
+
+        .card {
+            position: fixed;
+            z-index: 1000;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+        }
+
+        .commandbar {
+            top: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 8px 8px 10px;
+            border-radius: 12px;
+        }
+
+        .logo-mark {
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: var(--accent);
+            color: #1a0d05;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .divider { width: 1px; height: 22px; background: var(--line); flex-shrink: 0; }
+
+        .pill-select {
+            padding: 6px 28px 6px 10px;
+            font: 500 13px Inter, system-ui, sans-serif;
+            color: var(--text);
+            background: var(--raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa1ad' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;
+            border: 0;
+            border-radius: 8px;
+            appearance: none;
+            cursor: pointer;
+        }
+        #region { width: 140px; text-overflow: ellipsis; }
+        #metric, #scheme { max-width: 200px; text-overflow: ellipsis; }
+
+        .search-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 180px;
+            padding: 6px 10px;
+            color: var(--muted);
+            background: var(--raised);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+        }
+        .search-field:focus-within { border-color: var(--accent); }
+        .search-field svg { flex-shrink: 0; }
+        .search-field input { flex: 1; min-width: 0; font: inherit; color: var(--text); background: none; border: 0; outline: none; }
+        .search-field input::placeholder { color: var(--muted); }
+
+        .segments { display: flex; padding: 2px; border-radius: 8px; background: var(--raised); }
+        .segment {
+            padding: 4px 12px;
+            border: 0;
+            border-radius: 6px;
+            background: none;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .segment[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+
+        .eyebrow {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+        .legend-card {
+            bottom: 78px;
+            left: 24px;
+            width: 300px;
+            padding: 12px 14px;
+            border-radius: 12px;
+        }
+        .legend-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .legend-head h2 { font-size: 12px; font-weight: 600; }
+
+        .legend-head { position: relative; }
+        .info {
+            display: grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            border: 1.5px solid var(--muted);
+            border-radius: 50%;
+            background: none;
+            color: var(--muted);
+            font: 700 10px/1 Inter, sans-serif;
+        }
+        .info:hover, .info[aria-expanded="true"] { border-color: var(--text); color: var(--text); }
+        .tip {
+            position: absolute;
+            right: -6px;
+            bottom: calc(100% + 10px);
+            display: none;
+            width: 240px;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--raised);
+            color: var(--text);
+            font-size: 12px;
+            line-height: 1.45;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+        }
+        .info:hover + .tip, .info[aria-expanded="true"] + .tip { display: block; }
+
+        .baseline { margin-top: 10px; }
+        .baseline .segment { flex: 1; }
+
+        .strip-row { display: flex; align-items: center; gap: 8px; }
+        .strip { flex: 1; display: flex; gap: 2px; height: 10px; border-radius: 3px; overflow: hidden; }
+        .strip span { flex: 1; }
+        .strip-nodata { width: 10px; height: 10px; border-radius: 2px; }
+        .strip-ends { display: flex; justify-content: space-between; margin: 6px 18px 0 0; font-size: 11px; color: var(--muted); }
+
+        .dot-key { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+        .dot-key span { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+        .dot-key i { width: 9px; height: 9px; border-radius: 50%; }
+        .dot-note { margin-top: 6px; font-size: 12px; color: var(--muted); }
+
+        .statusbar {
+            bottom: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 8px 14px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .timeline { display: flex; gap: 4px; }
+        .year-button {
+            padding: 3px 10px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: none;
+            color: var(--muted);
+            font-family: "JetBrains Mono", monospace;
+            font-size: 12px;
+        }
+        .year-button[aria-pressed="true"] { border-color: var(--accent); color: var(--text); }
+        .year-button:disabled { opacity: .3; cursor: not-allowed; }
+
+        .leaflet-top.leaflet-right { top: 12px; right: 12px; }
+        .leaflet-bar { border: 1px solid var(--line) !important; border-radius: 12px !important; overflow: hidden; background: var(--card); }
+        .leaflet-bar a, .leaflet-bar a:hover {
+            width: 38px !important;
+            height: 38px !important;
+            line-height: 38px !important;
+            background: var(--card);
+            color: var(--text);
+            border-bottom-color: var(--line);
+        }
+        .leaflet-control-attribution { background: var(--card) !important; color: var(--muted); }
+        .leaflet-control-attribution a { color: var(--muted); }
+
+        .map-tip {
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--text);
+            box-shadow: none;
+            font: inherit;
+        }
+        .map-tip::before { display: none; }
+        .map-tip div { display: flex; flex-direction: column; }
+        .map-tip span { color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 12px; }
+
+        .drawer {
+            top: 24px;
+            right: 72px;
+            bottom: 24px;
+            width: 420px;
+            overflow-y: auto;
+            padding: 20px 22px 28px;
+        }
+        .drawer-head { display: flex; justify-content: space-between; align-items: center; }
+        .crumbs { font-size: 12px; color: var(--muted); }
+        .icon-button {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--raised);
+            font-size: 18px;
+            line-height: 1;
+        }
+        .place-name { margin-top: 6px; font: 700 34px/1.1 "Space Grotesk", Inter, sans-serif; }
+
+        .stats { display: grid; margin-top: 12px; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+        .stat-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+        .stat-value { display: block; margin: 4px 0; font-size: 22px; }
+        .stat.up .stat-value { color: var(--up); }
+        .stat.down .stat-value { color: var(--down); }
+        .stat-note { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+        .badge {
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: var(--line);
+            color: var(--text);
+            font: 500 11px "JetBrains Mono", monospace;
+        }
+        .badge.high { background: rgba(249, 122, 60, .2); color: var(--accent); }
+        .badge.low { background: rgba(79, 176, 232, .18); color: #7cc4ee; }
+
+        .box { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+        .box-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: 12px; }
+        .box-head h3 { font-size: 14px; font-weight: 600; }
+        .key { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+        .key span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
+        .key-own::before { background: var(--accent); }
+        .key-region::before { background: var(--region); }
+        .box > .key { margin-top: 6px; }
+
+        .chart { width: 100%; height: auto; }
+        .chart text { fill: var(--muted); font: 10px "JetBrains Mono", monospace; }
+        .chart .baseline { stroke: var(--line); stroke-dasharray: 3 3; }
+        .chart circle.series-own { fill: var(--accent); }
+        .chart circle.series-region { fill: var(--region); }
+        .chart polyline { fill: none; stroke-width: 2; }
+        .chart polyline.series-own { stroke: var(--accent); }
+        .chart polyline.series-region { stroke: var(--region); }
+
+        .bar-row { display: grid; grid-template-columns: 48px 1fr 108px; align-items: center; gap: 10px; margin: 8px 0; font-size: 13px; }
+        .bars { display: flex; flex-direction: column; gap: 3px; }
+        .bar { height: 6px; border-radius: 3px; min-width: 2px; }
+        .bar-own { background: var(--accent); }
+        .bar-region { background: var(--region); }
+        .bar-nums { font-size: 12px; color: var(--muted); text-align: right; }
+        .bar-nums strong { color: var(--text); font-weight: 500; }
+
+        .theme { margin-top: 22px; }
+        .theme-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2px 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .theme-item dt { color: var(--muted); }
+        .theme-item dd { text-align: right; }
+        .theme-meta { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+        .theme-item.active dt, .theme-item.active dd { color: var(--accent); }
+
+        .similar { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+        .similar-open { flex: 1; display: flex; flex-direction: column; padding: 2px 0; border: 0; background: none; text-align: left; }
+        .similar-open:hover strong { color: var(--accent); }
+        .pill-button { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--raised); font-size: 12px; white-space: nowrap; }
+        .pill-button:hover { border-color: var(--compare); }
+        .compare-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 8px 12px;
+            border: 1px solid var(--compare);
+            border-radius: 10px;
+            color: var(--compare);
+            font-weight: 500;
+        }
+        .place-name:focus { outline: none; }
+        .theme-toggle { font-size: 18px; text-decoration: none; }
+
+        @media (max-width: 1260px) {
+            .drawer { top: 88px; }
+        }
+
+        @media (max-width: 700px) {
+            .commandbar { top: 12px; left: 12px; right: 12px; flex-wrap: wrap; }
+            .search-field { order: 1; flex: 1 1 100%; width: auto; }
+            .commandbar > .divider { display: none; }
+            #region { width: auto; }
+            #metric, #scheme { max-width: none; flex: 1; }
+            .legend-card { left: 12px; right: 12px; bottom: 66px; width: auto; }
+            .statusbar { left: 12px; bottom: 12px; }
+            .drawer { inset: 12px; width: auto; }
+            .leaflet-top.leaflet-right { top: auto; bottom: 170px; }
+        }
+    </style>
+</head>
+<body>
+    <main id="map" aria-label="Map of census divisions"></main>
+
+    <header class="card commandbar" aria-label="Map controls">
+        <a class="logo-mark" href="main.html" aria-label="Census Viewer home">C</a>
+        <span class="divider" aria-hidden="true"></span>
+        <select class="pill-select" id="region" aria-label="Region"></select>
+        <label class="search-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="search" list="search-list" placeholder="Search divisions" autocomplete="off" aria-label="Find a census division">
+        </label>
+        <datalist id="search-list"></datalist>
+        <div class="segments" id="view-toggle" role="group" aria-label="Map view"></div>
+        <span class="divider" aria-hidden="true"></span>
+        <select class="pill-select" id="metric" aria-label="Metric"></select>
+        <select class="pill-select" id="scheme" aria-label="Colour dots by" hidden></select>
+    </header>
+    <h1 class="visually-hidden" id="headline">Census divisions</h1>
+
+    <section class="card legend-card" aria-labelledby="legend-title" aria-live="polite">
+        <div class="legend-head">
+            <h2 id="legend-title"></h2>
+            <button class="info" id="legend-info" type="button" aria-label="About this view" aria-expanded="false" aria-controls="legend-tip">i</button>
+            <p class="tip" id="legend-tip" role="tooltip"></p>
+        </div>
+        <div id="legend"></div>
+        <div class="segments baseline" id="baseline" role="group" aria-label="Colour by"></div>
+    </section>
+
+    <div class="card statusbar">
+        <div class="timeline" id="timeline" role="group" aria-label="Census year"></div>
+    </div>
+
+    <aside class="card drawer" id="drawer" aria-label="Division profile" aria-live="polite" hidden></aside>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="data/census-boundaries.js"></script>
+    <script src="data/census-age-sex-2016.js"></script>
+    <script src="data/census-profile-2016.js"></script>
+    <script src="js/format.js"></script>
+    <script src="js/breaks.js"></script>
+    <script src="js/metrics.js"></script>
+    <script src="js/regions.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/dots.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/panel.js"></script>
+    <script src="js/dot-layer.js"></script>
+    <script src="js/map.js"></script>
+    <script>CensusViewer.map.start();</script>
+</body>
+</html>
