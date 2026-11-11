@@ -1,6 +1,8 @@
 # Canadian Census Viewer
 
-**Run it:** clone the repo and open `code/main.html` in a browser. You don't need a server or an install.
+**Live site:** https://caelwynder.github.io/Canadian-Census-Viewer/
+
+You can also run it offline: clone the repo and open `code/main.html` in a browser. You don't need a server or an install.
 
 I started this in 2024 to map ward populations in London, Ontario. It grew into an atlas of all 293 census divisions in Canada, built from Statistics Canada's 2016 Census. You start on a title page with live thumbnails, then open a map where you can colour every division by one of 27 measures, switch to a dot-density view, and click any division to see its full profile.
 
@@ -70,6 +72,8 @@ npm run test:e2e     # browser tests, from file://, failing on any console error
 ```
 
 The generated data is committed, so you only need the two data steps if you want to change or rebuild it.
+
+Pushing changes under `code/` to `main` deploys the site to GitHub Pages via `.github/workflows/pages.yml`.
 
 ## Performance
 
